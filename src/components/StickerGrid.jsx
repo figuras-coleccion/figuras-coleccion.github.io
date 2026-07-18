@@ -1,67 +1,192 @@
-import { useState } from 'react'
-import DeleteStickerConfirmation from './DeleteStickerConfirmation'
+import { useEffect, useRef, useState } from 'react'
+import { getStickerDisplayNumber, isIrregularStickerCode } from '../data/albumGroups'
+import { useEditLock } from '../context/EditLockContext'
+import { useStickers } from '../context/StickersContext'
 
-export default function StickerGrid({ stickers, onUpdate, onDeleteSaved }) {
-  const [deleteCandidate, setDeleteCandidate] = useState(null)
+const LONG_PRESS_MS = 1000
 
-  const handleToggleOwned = (code, currentOwned, locked) => {
-    if (locked && currentOwned) {
-      setDeleteCandidate(prev => (prev === code ? null : code))
+function vibrate(duration = 12) {
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+    navigator.vibrate(duration)
+  }
+}
+
+function StickerToken({ sticker, onUpdate, onRemove, editingLocked }) {
+  const { code, owned, duplicates, pending } = sticker
+  const timerRef = useRef(null)
+  const feedbackTimerRef = useRef(null)
+  const longPressTriggeredRef = useRef(false)
+  const ignoredPressRef = useRef(false)
+  const [pressing, setPressing] = useState(false)
+  const [feedback, setFeedback] = useState('')
+
+  useEffect(() => () => {
+    if (timerRef.current) window.clearTimeout(timerRef.current)
+    if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current)
+  }, [])
+
+  const showFeedback = (value) => {
+    setFeedback(value)
+    if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current)
+    feedbackTimerRef.current = window.setTimeout(() => setFeedback(''), 420)
+  }
+
+  const clearPressTimer = () => {
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    setPressing(false)
+  }
+
+  const handleShortPress = () => {
+    if (editingLocked) {
+      showFeedback('🔒')
+      vibrate(8)
       return
     }
 
-    setDeleteCandidate(null)
-    onUpdate(code, { owned: !currentOwned })
+    if (!owned) {
+      onUpdate(code, { owned: true, duplicates: 0 })
+      showFeedback('✓')
+      vibrate(10)
+      return
+    }
+
+    onUpdate(code, { duplicates: duplicates + 1 })
+    showFeedback('+1')
+    vibrate(10)
   }
 
-  const handleDuplicateChange = (code, currentDup, delta) => {
-    const newDup = Math.max(0, currentDup + delta)
-    onUpdate(code, { duplicates: newDup })
+  const handleLongPress = () => {
+    longPressTriggeredRef.current = true
+    setPressing(false)
+
+    if (editingLocked) {
+      showFeedback('🔒')
+      vibrate(8)
+      return
+    }
+
+    if (!owned) {
+      showFeedback('0')
+      vibrate(12)
+      return
+    }
+
+    if (duplicates > 0) {
+      onUpdate(code, { duplicates: Math.max(0, duplicates - 1) })
+      showFeedback('−1')
+      vibrate(28)
+      return
+    }
+
+    Promise.resolve(onRemove(code))
+      .then(() => {
+        showFeedback('−')
+        vibrate(28)
+      })
+      .catch((error) => {
+        console.error('No se pudo desactivar la figurita:', error)
+        showFeedback('!')
+        vibrate(18)
+      })
   }
+
+  const handlePointerDown = (event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+
+    longPressTriggeredRef.current = false
+    ignoredPressRef.current = editingLocked
+
+    if (editingLocked) {
+      showFeedback('🔒')
+      vibrate(8)
+      return
+    }
+
+    setPressing(true)
+    timerRef.current = window.setTimeout(handleLongPress, LONG_PRESS_MS)
+  }
+
+  const handlePointerUp = () => {
+    if (ignoredPressRef.current) {
+      ignoredPressRef.current = false
+      clearPressTimer()
+      return
+    }
+
+    const wasLongPress = longPressTriggeredRef.current
+    clearPressTimer()
+    if (!wasLongPress) handleShortPress()
+  }
+
+  const handlePointerCancel = () => {
+    ignoredPressRef.current = false
+    clearPressTimer()
+  }
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      handleShortPress()
+    }
+  }
+
+  const irregular = isIrregularStickerCode(code)
+  const stateLabel = editingLocked
+    ? 'Edición bloqueada.'
+    : !owned
+      ? 'No obtenida. Toca para marcar como obtenida.'
+      : duplicates > 0
+        ? `Obtenida con ${duplicates} repetida${duplicates === 1 ? '' : 's'}. Toca para sumar y mantén 1 segundo para disminuir.`
+        : 'Obtenida. Toca para agregar una repetida o mantén 1 segundo para desactivarla.'
+
+  return (
+    <div className={`sticker-item ${owned ? 'owned' : 'missing'} ${irregular ? 'irregular' : 'circular'} ${pending ? 'pending' : ''} ${editingLocked ? 'editing-locked' : ''}`}>
+      <div className="sticker-token-wrap">
+        <button
+          type="button"
+          className={`sticker-token ${pressing ? 'pressing' : ''}`}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          onPointerLeave={handlePointerCancel}
+          onContextMenu={(event) => event.preventDefault()}
+          onKeyDown={handleKeyDown}
+          aria-disabled={editingLocked}
+          aria-label={`${code}. ${stateLabel}`}
+          title={`${code} · ${stateLabel}`}
+        >
+          <span className="sticker-number">{getStickerDisplayNumber(code)}</span>
+          {pending && <span className="sticker-pending-dot" title="Sincronizando" />}
+          {feedback && <span className="sticker-feedback">{feedback}</span>}
+        </button>
+        {duplicates > 0 && (
+          <span className="sticker-duplicate-badge" aria-label={`${duplicates} repetidas`}>
+            {duplicates}
+          </span>
+        )}
+      </div>
+      <span className="sticker-code-caption">{code}</span>
+    </div>
+  )
+}
+
+export default function StickerGrid({ stickers, onUpdate }) {
+  const { editingLocked } = useEditLock()
+  const { deleteSavedSticker } = useStickers()
 
   return (
     <div className="sticker-grid">
-      {stickers.map(({ code, owned, duplicates, locked, pending }) => (
-        <div key={code} className={`sticker-item ${owned ? 'owned' : ''} ${locked ? 'locked' : ''} ${pending ? 'pending' : ''}`.trim()}>
-          <span className="code">{code}</span>
-          <div
-            className="checkbox"
-            onClick={() => handleToggleOwned(code, owned, locked)}
-            title={locked ? 'Ya fue guardada. Toca para eliminar con confirmación segura.' : owned ? 'Quitar antes de guardar' : 'Marcar como pegada'}
-            style={{ cursor: 'pointer', opacity: locked ? 0.9 : 1 }}
-          >
-            {owned ? '✓' : ''}
-          </div>
-          {pending && (
-            <span className="pending-chip">Pendiente</span>
-          )}
-
-          {owned && (
-            <div className="dup-controls">
-              <button
-                onClick={() => handleDuplicateChange(code, duplicates, -1)}
-                disabled={duplicates <= 0}
-              >
-                -
-              </button>
-              <span className="dup-count">{duplicates}</span>
-              <button onClick={() => handleDuplicateChange(code, duplicates, 1)}>
-                +
-              </button>
-            </div>
-          )}
-          {!owned && (
-            <div style={{ height: '28px', marginTop: '6px' }} />
-          )}
-
-          {deleteCandidate === code && locked && owned && onDeleteSaved && (
-            <DeleteStickerConfirmation
-              stickerCode={code}
-              onCancel={() => setDeleteCandidate(null)}
-              onDeleteConfirmed={onDeleteSaved}
-            />
-          )}
-        </div>
+      {stickers.map(sticker => (
+        <StickerToken
+          key={sticker.code}
+          sticker={sticker}
+          onUpdate={onUpdate}
+          onRemove={deleteSavedSticker}
+          editingLocked={editingLocked}
+        />
       ))}
     </div>
   )

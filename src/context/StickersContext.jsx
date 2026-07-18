@@ -75,7 +75,6 @@ export function StickersProvider({ children }) {
           if (saved) {
             const localBackup = mergeCloudStickers(JSON.parse(saved))
             setStickers(localBackup)
-            // Si solo cargamos respaldo local, no lo tratamos como grabado en nube.
             setSavedStickers({ ...EMPTY_STICKERS })
           } else {
             setStickers({ ...EMPTY_STICKERS })
@@ -113,10 +112,6 @@ export function StickersProvider({ children }) {
       let safeUpdates = { ...updates }
       const alreadySavedAsOwned = Boolean(savedStickers[normalizedCode]?.owned)
 
-      // Regla clave:
-      // - Si la figurita ya fue guardada como pegada en la nube, no se desmarca con un clic normal.
-      // - La eliminación de una figurita guardada usa el flujo seguro de confirmación/reautenticación.
-      // - Si solo fue marcada temporalmente y aún no se guardó, sí puede volver a su estado original.
       if (alreadySavedAsOwned && safeUpdates.owned === false) {
         safeUpdates.owned = true
       }
@@ -257,7 +252,6 @@ export function StickersProvider({ children }) {
     }
   }, [user, stickers])
 
-
   const deleteSavedSticker = useCallback(async (code) => {
     if (!user) {
       throw new Error('Debes iniciar sesión para eliminar una tarjeta guardada.')
@@ -292,6 +286,66 @@ export function StickersProvider({ children }) {
     return true
   }, [user])
 
+  const applyManualTrade = useCallback(async ({ receivedCodes = [], deliveredCodes = [] } = {}) => {
+    if (!user) {
+      throw new Error('Debes iniciar sesión para registrar un intercambio.')
+    }
+
+    const received = Array.from(new Set(
+      receivedCodes.map(code => String(code || '').trim().toUpperCase()).filter(Boolean)
+    ))
+    const delivered = Array.from(new Set(
+      deliveredCodes.map(code => String(code || '').trim().toUpperCase()).filter(Boolean)
+    ))
+
+    const nextByCode = {}
+    const appliedReceived = []
+    const appliedDelivered = []
+
+    received.forEach(code => {
+      const current = normalizeSticker(stickers[code] || { owned: false, duplicates: 0 })
+      if (current.owned) return
+
+      nextByCode[code] = { owned: true, duplicates: current.duplicates }
+      appliedReceived.push(code)
+    })
+
+    delivered.forEach(code => {
+      const current = normalizeSticker(nextByCode[code] || stickers[code] || { owned: false, duplicates: 0 })
+      if (!current.owned || current.duplicates <= 0) return
+
+      nextByCode[code] = { owned: true, duplicates: current.duplicates - 1 }
+      appliedDelivered.push(code)
+    })
+
+    const changedCodes = Object.keys(nextByCode)
+    if (changedCodes.length === 0) {
+      return { success: false, received: [], delivered: [] }
+    }
+
+    const updates = {}
+    changedCodes.forEach(code => {
+      updates[`users/${user.id}/stickers/${code}`] = nextByCode[code]
+    })
+
+    await update(ref(db), updates)
+
+    setStickers(previous => ({ ...previous, ...nextByCode }))
+    setSavedStickers(previous => ({ ...previous, ...nextByCode }))
+    setPendingChanges(previous => {
+      const next = { ...previous }
+      changedCodes.forEach(code => delete next[code])
+      return next
+    })
+    setLastSaved(Date.now())
+
+    return {
+      success: true,
+      received: appliedReceived,
+      delivered: appliedDelivered
+    }
+  }, [user, stickers])
+
   const getOwnedStickers = useCallback(() => {
     return STANDARD_CODES.filter(code => savedStickers[code]?.owned)
   }, [savedStickers])
@@ -325,6 +379,7 @@ export function StickersProvider({ children }) {
       isStickerLocked,
       updateStickerLocal,
       deleteSavedSticker,
+      applyManualTrade,
       saveStickersByCodes,
       saveToCloud,
       saveTeamPage,

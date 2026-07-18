@@ -1,6 +1,9 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { onValue } from 'firebase/database'
 import { useNavigate } from 'react-router-dom'
 import { useStickers } from '../context/StickersContext'
+import { useUser } from '../context/UserContext'
+import { db, ref } from '../firebase'
 import { specials, teams, teamNames, getTeamStickerCount } from '../data/stickersData'
 
 function normalizeStickerState(state) {
@@ -10,21 +13,9 @@ function normalizeStickerState(state) {
   }
 }
 
-function getProgressClass(percent) {
-  if (percent >= 100) return 'complete'
-  if (percent >= 75) return 'high'
-  if (percent >= 40) return 'medium'
-  return 'low'
-}
-
-
-const flagCodeByTeam = {
-  MEX: 'mx', RSA: 'za', KOR: 'kr', CZE: 'cz', CAN: 'ca', BIH: 'ba', QAT: 'qa', SUI: 'ch',
-  BRA: 'br', MAR: 'ma', HAI: 'ht', SCO: 'gb-sct', USA: 'us', PAR: 'py', AUS: 'au', TUR: 'tr',
-  GER: 'de', CUW: 'cw', CIV: 'ci', ECU: 'ec', NED: 'nl', JPN: 'jp', SWE: 'se', TUN: 'tn',
-  BEL: 'be', EGY: 'eg', IRN: 'ir', NZL: 'nz', ESP: 'es', CPV: 'cv', KSA: 'sa', URU: 'uy',
-  FRA: 'fr', SEN: 'sn', IRQ: 'iq', NOR: 'no', ARG: 'ar', ALG: 'dz', AUT: 'at', JOR: 'jo',
-  POR: 'pt', COD: 'cd', UZB: 'uz', COL: 'co', ENG: 'gb-eng', CRO: 'hr', GHA: 'gh', PAN: 'pa'
+function asTime(value) {
+  const number = Number(value)
+  return Number.isFinite(number) && number > 0 ? number : 0
 }
 
 const spanishNameByTeam = {
@@ -39,79 +30,152 @@ const spanishNameByTeam = {
   COL: 'Colombia', ENG: 'Inglaterra', CRO: 'Croacia', GHA: 'Ghana', PAN: 'Panamá', CC: 'Coca-Cola'
 }
 
-function SectionBadgeTitle({ section }) {
-  if (section.id === 'specials') {
-    return (
-      <span className="section-progress-badge-title">
-        <span className="section-progress-brand-badge fifa">FIFA</span>
-        <span className="section-progress-separator">-</span>
-        <strong>FWC</strong>
-      </span>
-    )
-  }
-
-  if (section.id === 'CC') {
-    return (
-      <span className="section-progress-badge-title">
-        <span className="section-progress-brand-badge coca-cola">Coca‑Cola</span>
-        <span className="section-progress-separator">-</span>
-        <strong>CC</strong>
-      </span>
-    )
-  }
-
-  const spanishName = spanishNameByTeam[section.id]
-  const flagCode = flagCodeByTeam[section.id]
-
-  return (
-    <span className="section-progress-badge-title">
-      <span className="section-progress-flag-wrap">
-        {flagCode ? (
-          <img
-            className="section-progress-flag-img"
-            src={`https://flagcdn.com/w40/${flagCode}.png`}
-            alt=""
-            loading="lazy"
-          />
-        ) : (
-          <span className="section-progress-flag-fallback">🏳️</span>
-        )}
-      </span>
-      <span className="section-progress-separator">-</span>
-      <strong>{section.id}</strong>
-      {spanishName && <span className="section-progress-spanish">({spanishName})</span>}
-    </span>
-  )
-}
-
 function buildSections() {
   return [
     {
       id: 'specials',
-      title: '🏆 Logo Panini & FWC Specials',
+      title: 'FIFA',
       total: specials.length,
       codes: specials,
-      albumTarget: '/album?page=1'
+      albumTarget: '/specials'
     },
-    ...teams.map((team, index) => {
+    ...teams.map(team => {
       const total = getTeamStickerCount(team)
       return {
         id: team,
-        title: teamNames[team] || team,
+        title: spanishNameByTeam[team] || teamNames[team] || team,
         total,
         codes: Array.from({ length: total }, (_, i) => `${team}${i + 1}`),
-        albumTarget: `/album?page=${index + 2}`
+        albumTarget: `/team/${team}`
       }
     })
   ]
 }
 
+function sectionLabel(section) {
+  if (!section) return '—'
+  if (section.id === 'specials') return 'FIFA'
+  return spanishNameByTeam[section.id] || section.title || section.id
+}
+
+function sectionTarget(section) {
+  if (!section) return ''
+  return section.id === 'specials' ? '/specials' : `/team/${section.id}`
+}
+
+function clampPercent(value) {
+  return Math.max(0, Math.min(100, Math.round(Number(value) || 0)))
+}
+
+function formatShortDate(timestamp) {
+  const value = Number(timestamp)
+  if (!Number.isFinite(value) || value <= 0) return ''
+  return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(value))
+}
+
+function radarPoint(index, value, total = 5) {
+  const centerX = 160
+  const centerY = 155
+  const radius = 102 * (clampPercent(value) / 100)
+  const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / total)
+  return `${centerX + Math.cos(angle) * radius},${centerY + Math.sin(angle) * radius}`
+}
+
+function gridPolygon(level, total = 5) {
+  return Array.from({ length: total }, (_, index) => radarPoint(index, level, total)).join(' ')
+}
+
+function CollectorRadar({ metrics }) {
+  const values = metrics.map(metric => metric.value)
+  const polygon = values.map((value, index) => radarPoint(index, value, values.length)).join(' ')
+  const labelPositions = [
+    { x: 160, y: 14, anchor: 'middle' },
+    { x: 302, y: 104, anchor: 'end' },
+    { x: 250, y: 300, anchor: 'middle' },
+    { x: 70, y: 300, anchor: 'middle' },
+    { x: 18, y: 104, anchor: 'start' }
+  ]
+
+  return (
+    <div className="collector-radar-wrap">
+      <svg className="collector-radar" viewBox="0 0 320 320" role="img" aria-label="Perfil estadístico del coleccionista">
+        {[20, 40, 60, 80, 100].map(level => (
+          <polygon key={level} points={gridPolygon(level)} className="collector-radar-grid" />
+        ))}
+
+        {values.map((_, index) => (
+          <line
+            key={metrics[index].label}
+            x1="160"
+            y1="155"
+            x2={radarPoint(index, 100).split(',')[0]}
+            y2={radarPoint(index, 100).split(',')[1]}
+            className="collector-radar-axis"
+          />
+        ))}
+
+        <polygon points={polygon} className="collector-radar-area" />
+
+        {values.map((value, index) => {
+          const [x, y] = radarPoint(index, value).split(',')
+          return <circle key={`point-${metrics[index].label}`} cx={x} cy={y} r="5" className="collector-radar-point" />
+        })}
+
+        {metrics.map((metric, index) => {
+          const position = labelPositions[index]
+          return (
+            <g key={metric.label}>
+              <text x={position.x} y={position.y} textAnchor={position.anchor} className="collector-radar-label">
+                {metric.label}
+              </text>
+              <text x={position.x} y={position.y + 19} textAnchor={position.anchor} className="collector-radar-value">
+                {metric.value}%
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { getStats, savedStickers, saveToCloud, lastSaved, pendingChanges } = useStickers()
+  const { user } = useUser()
   const stats = getStats()
   const navigate = useNavigate()
+  const [collectionStats, setCollectionStats] = useState({})
+  const [sectionCompletions, setSectionCompletions] = useState({})
+  const [collectionEvents, setCollectionEvents] = useState({})
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0
+  const completionPercent = stats.total > 0 ? Math.round((stats.owned / stats.total) * 100) : 0
+  const userInitial = (user?.name || user?.email || 'U').slice(0, 1).toUpperCase()
+
+  useEffect(() => {
+    if (!user?.id) {
+      setCollectionStats({})
+      setSectionCompletions({})
+      setCollectionEvents({})
+      return undefined
+    }
+
+    const stopStats = onValue(ref(db, `users/${user.id}/collectionStats`), snapshot => {
+      setCollectionStats(snapshot.val() || {})
+    })
+    const stopCompletions = onValue(ref(db, `users/${user.id}/sectionCompletions`), snapshot => {
+      setSectionCompletions(snapshot.val() || {})
+    })
+    const stopEvents = onValue(ref(db, `users/${user.id}/collectionEvents`), snapshot => {
+      setCollectionEvents(snapshot.val() || {})
+    })
+
+    return () => {
+      stopStats()
+      stopCompletions()
+      stopEvents()
+    }
+  }, [user?.id])
 
   const progressSections = useMemo(() => {
     return buildSections().map(section => {
@@ -126,29 +190,157 @@ export default function Dashboard() {
       const missing = Math.max(section.total - owned, 0)
       const percent = section.total > 0 ? Math.round((owned / section.total) * 100) : 0
 
-      return {
-        ...section,
-        owned,
-        missing,
-        duplicates,
-        percent,
-        progressClass: getProgressClass(percent)
-      }
+      return { ...section, owned, missing, duplicates, percent }
     })
   }, [savedStickers])
 
-  const goToAlbum = () => {
-    navigate('/album')
-  }
+  const completedSections = useMemo(
+    () => progressSections.filter(section => section.percent >= 100),
+    [progressSections]
+  )
 
-  const goToSection = (target) => {
-    navigate(target)
-  }
+  const mostRepeated = useMemo(() => {
+    return Object.entries(savedStickers).reduce((best, [code, value]) => {
+      const duplicates = normalizeStickerState(value).duplicates
+      if (duplicates > best.duplicates) return { code, duplicates }
+      return best
+    }, { code: '—', duplicates: 0 })
+  }, [savedStickers])
+
+  const latestCompletion = useMemo(() => {
+    return Object.values(sectionCompletions || {})
+      .filter(value => Number(value?.completedAt || 0) > 0)
+      .sort((a, b) => Number(b.completedAt || 0) - Number(a.completedAt || 0))[0] || null
+  }, [sectionCompletions])
+
+  const recentObtained = useMemo(() => {
+    const candidates = Object.entries(collectionEvents || {})
+      .map(([id, event]) => ({ id, ...(event || {}) }))
+      .filter(event => event.type === 'sticker_obtained' || event.type === 'trade_received')
+      .map(event => ({
+        id: event.id,
+        code: String(event.code || '').toUpperCase(),
+        timestamp: asTime(event.timestamp),
+        source: event.type === 'trade_received' || String(event.source || '').includes('trade') ? 'trade' : 'manual'
+      }))
+      .filter(event => event.code && event.timestamp)
+
+    Object.entries(savedStickers || {}).forEach(([code, sticker]) => {
+      if (!sticker?.owned || !asTime(sticker.obtainedAt)) return
+      candidates.push({
+        id: `initial-${code}`,
+        code: String(code).toUpperCase(),
+        timestamp: asTime(sticker.obtainedAt),
+        source: 'initial'
+      })
+    })
+
+    candidates.sort((a, b) => b.timestamp - a.timestamp)
+
+    const result = []
+    candidates.forEach(candidate => {
+      const repeated = result.findIndex(item => (
+        item.code === candidate.code && Math.abs(item.timestamp - candidate.timestamp) <= 10000
+      ))
+
+      if (repeated >= 0) {
+        if (candidate.source === 'trade') result[repeated] = candidate
+        return
+      }
+
+      result.push(candidate)
+    })
+
+    return result.sort((a, b) => b.timestamp - a.timestamp).slice(0, 5)
+  }, [collectionEvents, savedStickers])
+
+  const specialSection = progressSections.find(section => section.id === 'specials')
+  const lastCompletedSection = progressSections.find(section => section.id === latestCompletion?.sectionId)
+  const tradesCompleted = Math.max(0, Number(collectionStats.tradesCompleted) || 0)
+  const tradeDelivered = Math.max(0, Number(collectionStats.stickersDeliveredInTrades) || 0)
+
+  const academyMetrics = useMemo(() => {
+    const specialPercent = specialSection?.percent || 0
+    const tradeInventory = tradeDelivered + stats.duplicates
+    const tradeScore = tradesCompleted > 0 && tradeInventory > 0
+      ? clampPercent((tradeDelivered / tradeInventory) * 100)
+      : 0
+    const coverageScore = progressSections.length > 0
+      ? clampPercent((progressSections.filter(section => section.percent >= 75).length / progressSections.length) * 100)
+      : 0
+    const averageDeviation = progressSections.length > 0
+      ? progressSections.reduce((sum, section) => sum + Math.abs(section.percent - completionPercent), 0) / progressSections.length
+      : 100
+    const balanceScore = clampPercent(100 - averageDeviation)
+
+    return [
+      { label: 'Progreso', value: clampPercent(completionPercent) },
+      { label: 'Especiales', value: clampPercent(specialPercent) },
+      { label: 'Intercambio', value: tradeScore },
+      { label: 'Cobertura', value: coverageScore },
+      { label: 'Balance', value: balanceScore }
+    ]
+  }, [completionPercent, progressSections, specialSection?.percent, stats.duplicates, tradeDelivered, tradesCompleted])
+
+  const completionCount = Math.max(completedSections.length, Object.keys(sectionCompletions || {}).length)
+  const latestDate = formatShortDate(latestCompletion?.completedAt)
+  const latestValue = lastCompletedSection
+    ? `${sectionLabel(lastCompletedSection)}${latestDate ? ` · ${latestDate}` : ''}`
+    : '—'
+  const latestTarget = sectionTarget(lastCompletedSection)
+  const recentTitle = recentObtained
+    .map(item => `${item.code} · ${new Date(item.timestamp).toLocaleString('es-PE')}`)
+    .join('\n')
+
+  const highlights = [
+    {
+      icon: '🏆',
+      tone: 'orange',
+      label: 'Más repetida',
+      value: mostRepeated.duplicates > 0 ? mostRepeated.code : '—',
+      onClick: () => navigate('/album?tab=duplicates')
+    },
+    {
+      icon: '⭐',
+      tone: 'purple',
+      label: 'Especiales pegadas',
+      value: `${specialSection?.owned || 0} / ${specialSection?.total || specials.length}`,
+      onClick: () => navigate('/specials')
+    },
+    {
+      icon: '🌐',
+      tone: 'blue',
+      label: 'Secciones completas',
+      value: completionCount,
+      onClick: () => navigate('/album')
+    },
+    {
+      icon: '📅',
+      tone: 'amber',
+      label: 'Última sección',
+      value: latestValue,
+      title: latestCompletion?.completedAt ? new Date(latestCompletion.completedAt).toLocaleString('es-PE') : '',
+      onClick: latestTarget ? () => navigate(latestTarget) : null
+    },
+    {
+      icon: '🕘',
+      tone: 'green',
+      label: 'Últimas obtenidas',
+      recent: recentObtained,
+      title: recentTitle,
+      onClick: () => navigate('/album')
+    }
+  ]
 
   return (
-    <div>
-      <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>📊 Mi Dashboard</h2>
-      
+    <div className="dashboard-page">
+      <div className="dashboard-title-row">
+        <h2><span aria-hidden="true">📊</span> Mi Dashboard</h2>
+        <div className="dashboard-title-avatar" title={`${user?.name || ''} ${user?.surname || ''}`.trim() || 'Mi perfil'}>
+          {user?.photoURL ? <img src={user.photoURL} alt="Foto de perfil" /> : <span>{userInitial}</span>}
+        </div>
+      </div>
+
       <div className="stats-row">
         <div className="stat-card">
           <div className="stat-value">{stats.owned}</div>
@@ -163,74 +355,74 @@ export default function Dashboard() {
           <div className="stat-label">Repetidas</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">{Math.round((stats.owned / stats.total) * 100)}%</div>
+          <div className="stat-value">{completionPercent}%</div>
           <div className="stat-label">Completado</div>
         </div>
       </div>
 
-      <div style={{ 
-        background: 'var(--border)', 
-        borderRadius: '10px', 
-        height: '8px', 
-        marginBottom: '20px',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          width: `${(stats.owned / stats.total) * 100}%`,
-          height: '100%',
-          background: 'linear-gradient(90deg, var(--primary), var(--accent))',
-          borderRadius: '10px',
-          transition: 'width 0.5s'
-        }} />
+      <div className="dashboard-progress-track" aria-label={`Álbum completado al ${completionPercent}%`}>
+        <span style={{ width: `${completionPercent}%` }} />
       </div>
+      <p className="dashboard-progress-caption">Tu álbum está al <strong>{completionPercent}%</strong> completado</p>
 
       <div className="dashboard-actions card">
-        <button type="button" className="btn-primary" onClick={() => goToAlbum()}>
-          📖 Ver álbum por páginas
+        <button type="button" className="btn-primary" onClick={() => navigate('/album')}>
+          📖 Ver Álbum
         </button>
         <div className="dashboard-report-actions">
           <button type="button" className="btn-secondary dashboard-report-button" onClick={() => navigate('/visual-report')}>
-            🧾 Reporte visual de faltantes
+            📄 Reporte PDF
           </button>
         </div>
-        <p>
-          Navega desde la página 01, marca varias tarjetas de una vez y guarda antes de cambiar de página.
-          También puedes imprimir tu reporte visual para revisar rápido qué figuras tienes y cuáles te faltan.
-        </p>
       </div>
 
-      <section className="section-progress-panel card">
-        <div className="section-progress-header">
-          <div>
-            <h3>📊 Avance por selección</h3>
-            <p>Revisa qué páginas tienes más avanzadas, cuáles te faltan y dónde tienes más repetidas para intercambiar.</p>
+      <section className="dashboard-insights-grid">
+        <article className="collector-academy-card card">
+          <div className="dashboard-card-heading">
+            <h3>⚙️ Academia del Coleccionista</h3>
+            <span
+              className="dashboard-info-dot"
+              title="Intercambio mide qué proporción de tus repetidas históricas ya fue entregada mediante trueques registrados."
+            >i</span>
           </div>
-        </div>
+          <CollectorRadar metrics={academyMetrics} />
+        </article>
 
-        <div className="section-progress-grid">
-          {progressSections.map(section => (
-            <button
-              key={section.id}
-              type="button"
-              className="section-progress-card"
-              onClick={() => goToSection(section.albumTarget)}
-              title={`Abrir ${section.title} en el álbum`}
-            >
-              <div className="section-progress-title"><SectionBadgeTitle section={section} /></div>
-              <div className="section-progress-main">
-                <strong>{section.owned}/{section.total}</strong>
-                <span>{section.percent}%</span>
-              </div>
-              <div className="section-progress-caption">
-                {section.missing} faltantes · {section.duplicates} repetida{section.duplicates === 1 ? '' : 's'}
-              </div>
-              <div className="section-progress-bar" aria-hidden="true">
-                <span className={section.progressClass} style={{ width: `${section.percent}%` }} />
-              </div>
-            </button>
-          ))}
-        </div>
+        <article className="collector-highlights-card card">
+          <div className="dashboard-card-heading">
+            <h3>⭐ Lo más importante</h3>
+          </div>
+          <div className="collector-highlights-list">
+            {highlights.map(item => (
+              <button
+                key={item.label}
+                type="button"
+                className={`collector-highlight-row${item.recent ? ' collector-highlight-recent' : ''}`}
+                onClick={item.onClick}
+                disabled={!item.onClick}
+                title={item.title || ''}
+              >
+                <span className={`collector-highlight-icon ${item.tone}`}>{item.icon}</span>
+                <span className="collector-highlight-label">{item.label}</span>
+                {item.recent ? (
+                  <span className="collector-highlight-recent-codes">
+                    {item.recent.length > 0
+                      ? item.recent.map(entry => <b key={`${entry.code}-${entry.timestamp}`}>{entry.code}</b>)
+                      : <em>Sin actividad</em>}
+                  </span>
+                ) : (
+                  <strong>{item.value}</strong>
+                )}
+                <span className="collector-highlight-arrow" aria-hidden="true">›</span>
+              </button>
+            ))}
+          </div>
+        </article>
       </section>
+
+      <footer className="dashboard-footer-note">
+        Creado por un padre para su hijo <span>·</span> © 2026 <span>·</span> Perú 🇵🇪
+      </footer>
 
       {hasPendingChanges && (
         <button className="btn-save" onClick={saveToCloud}>

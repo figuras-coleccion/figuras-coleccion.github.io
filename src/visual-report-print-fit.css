@@ -1,0 +1,151 @@
+@page {
+  size: A4 portrait;
+  margin: 4mm;
+}
+
+@page visualReport {
+  size: A4 portrait;
+  margin: 4mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #fff !important;
+  }
+
+  .app-header,
+  .bottom-nav,
+  .no-print {
+    display: none !important;
+  }
+
+  .main-content {
+    width: 202mm !important;
+    height: 289mm !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .visual-report-page {
+    page: visualReport;
+    width: 202mm !important;
+    height: 289mm !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .visual-report-sheet {
+    width: 202mm !important;
+    height: 289mm !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    zoom: 1 !important;
+    transform: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+    page-break-after: avoid !important;
+  }
+
+  .visual-report-summary {
+    flex: 0 0 auto !important;
+    margin: 0 0 1mm !important;
+  }
+
+  .visual-report-summary-legend-only {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .visual-report-grid {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-rows: repeat(51, minmax(0, 1fr)) !important;
+    gap: 0.35mm !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+  }
+
+  .visual-report-row {
+    min-height: 0 !important;
+    height: 100% !important;
+    grid-template-columns: 18mm minmax(0, 1fr) !important;
+    gap: 0.6mm !important;
+    align-items: stretch !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+  }
+
+  .visual-report-row:nth-child(5n):not(:last-child) {
+    margin: 0 !important;
+    padding: 0 !important;
+    border-bottom: 0.15mm solid rgba(148, 163, 184, 0.55) !important;
+  }
+
+  .visual-report-row-label,
+  .visual-report-cells,
+  .visual-sticker-cell {
+    min-height: 0 !important;
+    height: 100% !important;
+  }
+
+  .visual-report-row-label {
+    grid-template-columns: 6mm 2mm minmax(0, 1fr) !important;
+    padding: 0.2mm 0.5mm !important;
+  }
+
+  .visual-report-label-media {
+    width: 6mm !important;
+    min-width: 6mm !important;
+  }
+
+  .visual-report-flag-img {
+    width: 5.4mm !important;
+    height: 3.6mm !important;
+  }
+
+  .visual-report-brand-badge {
+    width: 5.8mm !important;
+    min-width: 5.8mm !important;
+    height: 3.2mm !important;
+  }
+
+  .visual-report-cells {
+    gap: 0.3mm !important;
+  }
+
+  .visual-sticker-cell {
+    border-width: 0.18mm !important;
+  }
+
+  .visual-report-footer {
+    flex: 0 0 auto !important;
+    margin: 1mm 0 0 !important;
+    padding-top: 0.8mm !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+  }
+}

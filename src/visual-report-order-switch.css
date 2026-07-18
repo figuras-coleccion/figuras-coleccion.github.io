@@ -1,0 +1,63 @@
+.visual-report-action-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.visual-report-order-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-width: 320px;
+  padding: 4px;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  background: #eef2f7;
+}
+
+.visual-report-order-switch button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.visual-report-order-switch button.active {
+  background: #fff;
+  color: #1e40af;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 760px) {
+  .trade-report-actions {
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .visual-report-action-group {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .visual-report-order-switch {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .visual-report-action-group > .btn-primary {
+    width: 100% !important;
+  }
+
+  .visual-report-order-switch button {
+    padding: 8px 6px;
+    font-size: 10px;
+  }
+}

@@ -1,0 +1,109 @@
+/* Cámara QR compatible con iOS/Brave + carga de imagen */
+.qr-scan-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.qr-scan-actions .qr-scan-button {
+  margin-top: 0;
+}
+
+.qr-upload-button {
+  width: 100%;
+  min-height: 50px;
+  padding: 10px 14px;
+  border: 1px solid #c8d4f7;
+  border-radius: 17px;
+  background: #eef3ff;
+  color: #315bdc;
+  font-size: 14px;
+  font-weight: 900;
+  box-shadow: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.qr-upload-button:disabled {
+  opacity: 0.58;
+  cursor: wait;
+}
+
+.qr-file-input {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.qr-file-reader {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  width: 2px;
+  height: 2px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#panini-live-qr-reader {
+  position: relative;
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #111827;
+}
+
+#panini-live-qr-reader video,
+#panini-live-qr-reader canvas {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 320px;
+  object-fit: cover;
+  border-radius: 18px;
+}
+
+#panini-live-qr-reader > div {
+  width: 100% !important;
+}
+
+.qr-scanner-error {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: #fff1f2;
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.qr-upload-in-scanner {
+  margin-top: 12px;
+}
+
+@media (min-width: 700px) {
+  .qr-scan-actions {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 520px) {
+  #panini-live-qr-reader,
+  #panini-live-qr-reader video,
+  #panini-live-qr-reader canvas {
+    min-height: min(58vh, 360px);
+  }
+
+  .qr-upload-button {
+    min-height: 48px;
+    font-size: 13px;
+  }
+}

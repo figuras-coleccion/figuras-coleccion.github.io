@@ -1,0 +1,145 @@
+/* Ajustes finales de Trueque QR: pantalla compacta y estados visuales */
+
+/* Cuando hay match, el QR propio y sus botones desaparecen siempre. */
+.manual-trade-page.panini-qr-match-active .qr-own-card,
+.qr-trade-page:has(.qr-match-card) .qr-own-card {
+  display: none !important;
+}
+
+/* En las figuritas que se pueden recibir no mostramos cuántas repetidas tiene la otra persona. */
+.qr-match-section.receive .qr-match-count {
+  display: none !important;
+}
+
+/* Recibir se presenta como figurita faltante, igual que en el Álbum. */
+.qr-match-section.receive .qr-match-token-shape {
+  background: #e1e6ee;
+  color: #748095;
+}
+
+.qr-match-section.receive .qr-match-token.irregular .qr-match-token-shape {
+  background: #f5e5b2;
+  color: #9b6a0a;
+}
+
+/* Entregar también comienza como opción disponible sin marcar. */
+.qr-match-section.deliver .qr-match-token-shape {
+  background: #e1e6ee;
+  color: #748095;
+}
+
+.qr-match-section.deliver .qr-match-token.irregular .qr-match-token-shape {
+  background: #f5e5b2;
+  color: #9b6a0a;
+}
+
+/* Al seleccionarla pasa a oscura y aparece el check verde. */
+.qr-match-section.receive .qr-match-token.qr-selected .qr-match-token-shape,
+.qr-match-section.receive .qr-match-token.irregular.qr-selected .qr-match-token-shape,
+.qr-match-section.deliver .qr-match-token.qr-selected .qr-match-token-shape,
+.qr-match-section.deliver .qr-match-token.irregular.qr-selected .qr-match-token-shape {
+  background: #69778c;
+  color: #ffffff;
+}
+
+/* Tarjeta inicial QR más compacta. */
+.qr-own-head > div > p {
+  display: none !important;
+}
+
+.qr-own-card .qr-own-head {
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.qr-own-card .qr-image-frame {
+  width: min(66vw, 255px);
+  padding: 9px;
+  border-radius: 21px;
+}
+
+.qr-own-card .qr-user-name {
+  margin-top: 6px;
+}
+
+.qr-own-card .qr-scan-actions {
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.qr-own-card .qr-scan-button,
+.qr-own-card .qr-upload-button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+}
+
+@media (max-width: 520px) {
+  .qr-trade-page {
+    gap: 8px;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+
+  .qr-own-card {
+    padding: 12px 12px 10px;
+  }
+
+  .qr-own-card .qr-own-head {
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .qr-own-card .qr-own-head h3 {
+    font-size: 18px;
+    line-height: 1.1;
+  }
+
+  .qr-own-card .qr-live-pill {
+    min-height: 25px;
+    padding: 0 9px;
+    font-size: 9px;
+  }
+
+  .qr-own-card .qr-image-frame {
+    width: min(62vw, 238px);
+    padding: 8px;
+    border-radius: 19px;
+    box-shadow: inset 0 0 0 4px #f5f7fa;
+  }
+
+  .qr-own-card .qr-image-frame img {
+    border-radius: 10px;
+  }
+
+  .qr-own-card .qr-user-name {
+    margin-top: 5px;
+    font-size: 11px;
+    line-height: 1.15;
+  }
+
+  .qr-own-card .qr-scan-actions {
+    gap: 7px;
+    margin-top: 7px;
+  }
+
+  .qr-own-card .qr-scan-button,
+  .qr-own-card .qr-upload-button {
+    min-height: 41px;
+    padding: 7px 10px;
+    border-radius: 13px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 390px) and (max-height: 850px) {
+  .qr-own-card .qr-image-frame {
+    width: min(58vw, 218px);
+  }
+
+  .qr-own-card .qr-scan-button,
+  .qr-own-card .qr-upload-button {
+    min-height: 39px;
+    padding: 6px 9px;
+  }
+}

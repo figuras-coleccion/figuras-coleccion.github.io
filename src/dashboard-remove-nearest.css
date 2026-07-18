@@ -1,0 +1,60 @@
+.collector-highlight-row.collector-highlight-recent {
+  grid-template-columns: 40px minmax(0, 1fr) 18px;
+  grid-template-areas:
+    "icon label arrow"
+    "icon codes arrow";
+  min-height: 72px;
+}
+
+.collector-highlight-recent .collector-highlight-icon {
+  grid-area: icon;
+}
+
+.collector-highlight-recent .collector-highlight-label {
+  grid-area: label;
+  align-self: end;
+}
+
+.collector-highlight-recent-codes {
+  grid-area: codes;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.collector-highlight-recent-codes b {
+  min-width: 0;
+  padding: 3px 6px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.collector-highlight-recent-codes em {
+  color: #94a3b8;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.collector-highlight-recent .collector-highlight-arrow {
+  grid-area: arrow;
+  align-self: center;
+}
+
+@media (max-width: 520px) {
+  .collector-highlight-recent-codes {
+    gap: 3px;
+  }
+
+  .collector-highlight-recent-codes b {
+    padding-inline: 4px;
+    font-size: 9px;
+  }
+}

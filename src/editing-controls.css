@@ -1,0 +1,309 @@
+/* Edición directa: badge exterior, autosave visual y candado global. */
+.header-user-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.header-edit-lock {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid #d9dfeb;
+  background: #f6f8fc;
+  color: #315bdc;
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: 0 5px 14px rgba(17, 24, 39, 0.08);
+}
+
+.header-edit-lock.locked {
+  background: #111827;
+  border-color: #111827;
+  color: #ffffff;
+}
+
+.header-edit-lock.unlocked {
+  background: #eef3ff;
+  border-color: #cad7ff;
+  color: #315bdc;
+}
+
+.sticker-token-wrap {
+  position: relative;
+  width: min(100%, 88px);
+  aspect-ratio: 1;
+  overflow: visible;
+  isolation: isolate;
+}
+
+.sticker-token-wrap .sticker-token {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+
+.sticker-duplicate-badge {
+  position: absolute !important;
+  top: -8px !important;
+  right: -8px !important;
+  z-index: 60 !important;
+  min-width: 27px !important;
+  height: 27px !important;
+  padding: 0 6px !important;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #315bdc;
+  color: #ffffff;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 1;
+  box-shadow: 0 5px 13px rgba(49, 91, 220, 0.30) !important;
+  pointer-events: none;
+  clip-path: none !important;
+}
+
+.sticker-item.irregular .sticker-duplicate-badge {
+  top: -8px !important;
+  right: -8px !important;
+}
+
+.sticker-item.editing-locked .sticker-token {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.sticker-item.editing-locked .sticker-duplicate-badge {
+  opacity: 0.76;
+}
+
+.sticker-token.pressing::after {
+  animation-duration: 1s !important;
+}
+
+.trade-sticker-wrap {
+  position: relative;
+  width: min(100%, 72px);
+  aspect-ratio: 1;
+  overflow: visible;
+}
+
+.trade-sticker-wrap .trade-sticker-shape {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+
+.trade-sticker-wrap .trade-available-badge,
+.trade-sticker-wrap .trade-selected-badge {
+  z-index: 30;
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(17, 24, 39, 0.18);
+  clip-path: none !important;
+}
+
+.trade-sticker-item.editing-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.album-save-dock {
+  display: none !important;
+}
+
+/* Trueque plano: sin búsqueda ni divisiones por selección. */
+.manual-trade-flat-page {
+  padding-top: 2px;
+}
+
+.manual-trade-flat-head {
+  margin-bottom: 8px;
+}
+
+.manual-trade-flat-head h2 {
+  margin: 0;
+}
+
+.manual-trade-flat-panel {
+  margin-top: 12px;
+  padding: 16px 14px 18px;
+  border-radius: 20px;
+}
+
+.manual-trade-flat-title {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e4e8ef;
+}
+
+.manual-trade-flat-title h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+}
+
+.manual-trade-flat-title > strong {
+  color: #315bdc;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.manual-trade-flat-grid {
+  padding: 18px 0 4px;
+  gap: 18px 8px;
+}
+
+.manual-trade-flat-grid .trade-sticker-item {
+  min-width: 0;
+}
+
+.manual-trade-flat-grid .trade-sticker-item small {
+  margin-top: 2px;
+  color: #667085;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+  line-height: 1.15;
+}
+
+.manual-trade-confirm-dock {
+  z-index: 320 !important;
+  pointer-events: auto !important;
+}
+
+.manual-trade-confirm-dock button {
+  position: relative;
+  z-index: 321;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.manual-trade-confirm-dock button:not(:disabled) {
+  cursor: pointer;
+}
+
+.manual-trade-processing,
+.manual-trade-error {
+  position: fixed;
+  left: 50%;
+  bottom: calc(152px + env(safe-area-inset-bottom));
+  z-index: 360;
+  transform: translateX(-50%);
+  width: min(calc(100% - 28px), 560px);
+  margin: 0;
+  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.18);
+}
+
+.manual-trade-processing {
+  background: #eef3ff;
+  border-color: #c7d5ff;
+  color: #1d4ed8;
+}
+
+.trade-success-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.34);
+  backdrop-filter: blur(5px);
+  animation: trade-success-fade 0.18s ease-out both;
+}
+
+.trade-success-card {
+  width: min(100%, 340px);
+  padding: 26px 22px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 26px;
+  background: #ffffff;
+  color: #111827;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  animation: trade-success-pop 0.24s ease-out both;
+}
+
+.trade-success-icon {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #16a36a, #22c55e);
+  color: #ffffff;
+  font-size: 34px;
+  font-weight: 900;
+  box-shadow: 0 10px 26px rgba(22, 163, 106, 0.28);
+}
+
+.trade-success-card h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.trade-success-card p {
+  margin: 6px 0 10px;
+  color: #16a36a;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.trade-success-card small {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@keyframes trade-success-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes trade-success-pop {
+  from { opacity: 0; transform: translateY(12px) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 520px) {
+  .header-edit-lock {
+    width: 35px;
+    height: 35px;
+    flex-basis: 35px;
+    font-size: 16px;
+  }
+
+  .sticker-token-wrap {
+    max-width: 66px;
+  }
+
+  .trade-sticker-wrap {
+    max-width: 58px;
+  }
+
+  .manual-trade-flat-panel {
+    padding: 14px 10px 16px;
+  }
+
+  .manual-trade-flat-title h3 {
+    font-size: 18px;
+  }
+
+  .manual-trade-flat-grid {
+    gap: 16px 7px;
+  }
+
+  .manual-trade-flat-grid .trade-sticker-item small {
+    font-size: 9.5px;
+  }
+}

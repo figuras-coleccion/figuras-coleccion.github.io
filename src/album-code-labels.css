@@ -1,0 +1,67 @@
+/* Igualar los códigos del Álbum con los códigos visibles en Trueque. */
+.album-v2-page .sticker-code-caption {
+  margin-top: 2px;
+  min-height: 14px;
+  color: #667085;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+  line-height: 1.15;
+}
+
+/* Álbum: filas visuales estables y espacio seguro para badges de repetidas. */
+.album-v2-page .album-group-content {
+  padding: 4px 12px 8px;
+  overflow: visible !important;
+}
+
+.album-v2-page .sticker-grid {
+  width: 100%;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 18px 8px !important;
+  padding: 8px 8px 10px !important;
+  box-sizing: border-box;
+  overflow: visible !important;
+}
+
+.album-v2-page .sticker-item,
+.album-v2-page .sticker-token-wrap {
+  min-width: 0;
+  overflow: visible !important;
+}
+
+@media (min-width: 900px) {
+  .album-v2-page .sticker-grid {
+    grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
+    gap: 20px 10px !important;
+    padding: 10px 12px 12px !important;
+  }
+}
+
+@media (max-width: 899px) {
+  .album-v2-page .album-group-content {
+    padding-inline: 6px;
+  }
+
+  .album-v2-page .sticker-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 16px 7px !important;
+    padding: 8px 9px 10px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .album-v2-page .sticker-code-caption {
+    font-size: 9.5px;
+  }
+
+  .album-v2-page .album-group-content {
+    padding-inline: 2px;
+  }
+
+  .album-v2-page .sticker-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 15px 6px !important;
+    padding: 8px 10px 10px !important;
+  }
+}

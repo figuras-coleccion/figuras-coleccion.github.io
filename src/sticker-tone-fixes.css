@@ -1,0 +1,49 @@
+/* Tonos unificados y más visibles para álbum y trueque. */
+:root {
+  --sticker-missing-bg: #e3e8ef;
+  --sticker-missing-text: #6f7a8c;
+  --sticker-owned-bg: #6f7b8d;
+  --sticker-owned-text: #ffffff;
+  --sticker-irregular-missing-bg: #f3e4b9;
+  --sticker-irregular-missing-text: #9b6b12;
+}
+
+/* Álbum: aplica igual en Todas, Me faltan y Repetidas. */
+.sticker-item.missing .sticker-token {
+  background: var(--sticker-missing-bg) !important;
+  color: var(--sticker-missing-text) !important;
+}
+
+.sticker-item.owned .sticker-token,
+.sticker-item.owned.irregular .sticker-token {
+  background: var(--sticker-owned-bg) !important;
+  color: var(--sticker-owned-text) !important;
+}
+
+.sticker-item.missing.irregular .sticker-token {
+  background: var(--sticker-irregular-missing-bg) !important;
+  color: var(--sticker-irregular-missing-text) !important;
+}
+
+/* Trueque: misma escala visual que el álbum. */
+.trade-sticker-item:not(.selected) .trade-sticker-shape {
+  background: var(--sticker-missing-bg) !important;
+  color: var(--sticker-missing-text) !important;
+}
+
+.trade-sticker-item.selected .trade-sticker-shape,
+.trade-sticker-item.selected.irregular .trade-sticker-shape {
+  background: var(--sticker-owned-bg) !important;
+  color: var(--sticker-owned-text) !important;
+}
+
+.trade-sticker-item.irregular:not(.selected) .trade-sticker-shape {
+  background: var(--sticker-irregular-missing-bg) !important;
+  color: var(--sticker-irregular-missing-text) !important;
+}
+
+/* Mantiene legibles los números y códigos. */
+.sticker-item.missing .sticker-number,
+.trade-sticker-item:not(.selected) .trade-sticker-shape > span {
+  color: inherit !important;
+}

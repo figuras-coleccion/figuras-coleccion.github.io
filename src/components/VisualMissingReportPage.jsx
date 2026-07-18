@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStickers } from '../context/StickersContext'
 import { useUser } from '../context/UserContext'
@@ -103,11 +103,18 @@ function buildTeamRow(team) {
   }
 }
 
-function buildVisualRows() {
-  const countryTeams = teams
-    .filter(team => team !== 'CC')
-    .slice()
-    .sort((a, b) => a.localeCompare(b))
+function alphabeticalName(team) {
+  const raw = String(teamNames[team] || team)
+  const spanish = raw.match(/\(([^)]+)\)\s*$/)?.[1]
+  const withoutFlag = raw.replace(/^\p{Extended_Pictographic}+\s*/u, '')
+  return String(spanish || withoutFlag || team).trim()
+}
+
+function buildVisualRows(orderMode = 'album') {
+  const countryTeams = teams.filter(team => team !== 'CC')
+  const orderedTeams = orderMode === 'alphabetical'
+    ? countryTeams.slice().sort((a, b) => alphabeticalName(a).localeCompare(alphabeticalName(b), 'es', { sensitivity: 'base' }))
+    : countryTeams
 
   return [
     {
@@ -119,7 +126,7 @@ function buildVisualRows() {
         number: code === '00' ? '00' : code.replace('FWC', '')
       }))
     },
-    ...countryTeams.map(buildTeamRow),
+    ...orderedTeams.map(buildTeamRow),
     buildTeamRow('CC')
   ]
 }
@@ -151,9 +158,10 @@ export default function VisualMissingReportPage() {
   const navigate = useNavigate()
   const { user } = useUser()
   const { savedStickers } = useStickers()
+  const [orderMode, setOrderMode] = useState('album')
 
   const rows = useMemo(() => {
-    return buildVisualRows().map(row => {
+    return buildVisualRows(orderMode).map(row => {
       const cells = row.cells.map(cell => {
         const state = normalizeStickerState(savedStickers[cell.code])
         return {
@@ -173,7 +181,7 @@ export default function VisualMissingReportPage() {
         missing
       }
     })
-  }, [savedStickers])
+  }, [orderMode, savedStickers])
 
   return (
     <div className="visual-report-page">
@@ -181,9 +189,31 @@ export default function VisualMissingReportPage() {
         <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>
           ← Volver
         </button>
-        <button type="button" className="btn-primary" onClick={() => window.print()}>
-          🖨️ Imprimir / Guardar PDF
-        </button>
+
+        <div className="visual-report-action-group">
+          <div className="visual-report-order-switch" role="group" aria-label="Orden del reporte">
+            <button
+              type="button"
+              className={orderMode === 'album' ? 'active' : ''}
+              aria-pressed={orderMode === 'album'}
+              onClick={() => setOrderMode('album')}
+            >
+              Orden del Álbum
+            </button>
+            <button
+              type="button"
+              className={orderMode === 'alphabetical' ? 'active' : ''}
+              aria-pressed={orderMode === 'alphabetical'}
+              onClick={() => setOrderMode('alphabetical')}
+            >
+              Orden Alfabético
+            </button>
+          </div>
+
+          <button type="button" className="btn-primary" onClick={() => window.print()}>
+            🖨️ Imprimir / Guardar PDF
+          </button>
+        </div>
       </div>
 
       <div className="visual-report-sheet">

@@ -1,0 +1,2 @@
+svg.brand-logo:not([data-panini-exact-logo-ready="1"]){visibility:hidden!important}
+canvas.brand-logo[data-panini-exact-logo-ready="1"]{visibility:visible!important;border-radius:50%;object-fit:cover}
