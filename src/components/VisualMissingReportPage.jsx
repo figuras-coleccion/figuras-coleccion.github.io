@@ -103,17 +103,10 @@ function buildTeamRow(team) {
   }
 }
 
-function alphabeticalName(team) {
-  const raw = String(teamNames[team] || team)
-  const spanish = raw.match(/\(([^)]+)\)\s*$/)?.[1]
-  const withoutFlag = raw.replace(/^\p{Extended_Pictographic}+\s*/u, '')
-  return String(spanish || withoutFlag || team).trim()
-}
-
 function buildVisualRows(orderMode = 'album') {
   const countryTeams = teams.filter(team => team !== 'CC')
   const orderedTeams = orderMode === 'alphabetical'
-    ? countryTeams.slice().sort((a, b) => alphabeticalName(a).localeCompare(alphabeticalName(b), 'es', { sensitivity: 'base' }))
+    ? [...countryTeams].sort((a, b) => a.localeCompare(b))
     : countryTeams
 
   return [
