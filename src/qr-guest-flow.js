@@ -1,6 +1,7 @@
 import { onValue, push, set } from 'firebase/database'
 import { auth, db, ref, get, update } from './firebase'
 import { closeQrOverlay, formatCodes, formatQuantities, normalizeSticker, showQrOverlay, sumQuantities } from './qr-trade-ui'
+import { getAlbumChildPath, getStoredActiveAlbumId, isProfileUsingAlbum } from './albums/runtime'
 
 let busy = false
 let off = null
@@ -85,8 +86,10 @@ async function applyDecision(session, decision) {
   if (decision.status !== 'accepted' || sessionStorage.getItem(`qr_applied_${session.id}`)) return
 
   const changes = {}
+  const albumId = session.albumId || getStoredActiveAlbumId()
+  const stickersPath = getAlbumChildPath(session.guestId, 'stickers', albumId)
   Object.entries(decision.guestPatch || {}).forEach(([stickerCode, value]) => {
-    changes[`users/${session.guestId}/stickers/${stickerCode}`] = normalizeSticker(value)
+    changes[`${stickersPath}/${stickerCode}`] = normalizeSticker(value)
   })
   changes[`users/${session.guestId}/qrTradeOutgoing/${session.id}/status`] = 'completed'
   changes[`users/${session.guestId}/qrTradeOutgoing/${session.id}/completedAt`] = Date.now()
@@ -149,9 +152,14 @@ export async function submitQrTrade({ hostId = '', receiveCodes = [], deliverQua
 
     const guestProfile = guestProfileSnapshot.val() || {}
     const hostProfile = hostProfileSnapshot.val() || {}
+    const albumId = getStoredActiveAlbumId()
+    if (!isProfileUsingAlbum(hostProfile, albumId)) {
+      throw new Error('La otra persona tiene cargado un álbum diferente.')
+    }
     const now = Date.now()
     const session = {
       id,
+      albumId,
       hostId: host,
       guestId: guest.uid,
       hostName: `${hostProfile.name || ''} ${hostProfile.surname || ''}`.trim() || 'Anfitrión',

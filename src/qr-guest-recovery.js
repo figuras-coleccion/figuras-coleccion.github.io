@@ -2,6 +2,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { onValue } from 'firebase/database'
 import { auth, db, ref, get, update } from './firebase'
 import { closeQrOverlay, formatCodes, formatQuantities, normalizeSticker, showQrOverlay } from './qr-trade-ui'
+import { getAlbumChildPath, getStoredActiveAlbumId } from './albums/runtime'
 
 let uid = ''
 let busy = false
@@ -46,8 +47,10 @@ async function apply(session, decision) {
   if (decision.status !== 'accepted' || sessionStorage.getItem(`qr_applied_${session.id}`)) return
 
   const changes = {}
+  const albumId = session.albumId || getStoredActiveAlbumId()
+  const stickersPath = getAlbumChildPath(uid, 'stickers', albumId)
   Object.entries(decision.guestPatch || {}).forEach(([code, value]) => {
-    changes[`users/${uid}/stickers/${code}`] = normalizeSticker(value)
+    changes[`${stickersPath}/${code}`] = normalizeSticker(value)
   })
   changes[`users/${uid}/qrTradeOutgoing/${session.id}/status`] = 'completed'
   changes[`users/${uid}/qrTradeOutgoing/${session.id}/completedAt`] = Date.now()
@@ -80,6 +83,7 @@ async function scan() {
     const sessions = Object.values(snap.val() || {})
       .filter(item => (
         item?.status === 'pending' &&
+        (!item.albumId || item.albumId === getStoredActiveAlbumId()) &&
         !localStorage.getItem(`qr_rejected_${item.id}`) &&
         !sessionStorage.getItem(`qr_applied_${item.id}`) &&
         (!item.expiresAt || item.expiresAt > Date.now())

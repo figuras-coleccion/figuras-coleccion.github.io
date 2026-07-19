@@ -5,7 +5,7 @@ const radarLabels = ['Álbum', 'Especiales', 'Trueques', 'Selecciones', 'Equilib
 
 const radarHelp = [
   { icon: '📘', label: 'Álbum', text: 'Cuánto del álbum completo ya pegaste.' },
-  { icon: '⭐', label: 'Especiales', text: 'Cuántas figuritas especiales FWC ya tienes.' },
+  { icon: '⭐', label: 'Especiales', text: 'Cuántas figuritas especiales del álbum ya tienes.' },
   { icon: '🔁', label: 'Trueques', text: 'Qué parte de tus repetidas ya entregaste en trueques confirmados.' },
   { icon: '🌍', label: 'Selecciones', text: 'Cuántas selecciones están muy avanzadas: al menos al 75%.' },
   { icon: '⚖️', label: 'Equilibrio', text: 'Qué tan parejo avanzas. Baja si unas selecciones están completas y otras muy atrasadas.' }

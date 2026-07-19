@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Mundial 2026 - 3 Reyes</title>
+  <desc id="desc">Emblema circular azul y dorado con corona, balón y el número tres.</desc>
+  <defs>
+    <radialGradient id="bg" cx="38%" cy="28%" r="78%">
+      <stop offset="0" stop-color="#174a8b"/>
+      <stop offset="0.62" stop-color="#082d62"/>
+      <stop offset="1" stop-color="#041b3d"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff2a6"/>
+      <stop offset="0.42" stop-color="#f3c846"/>
+      <stop offset="1" stop-color="#c78c16"/>
+    </linearGradient>
+    <clipPath id="circle"><circle cx="128" cy="128" r="120"/></clipPath>
+  </defs>
+  <g clip-path="url(#circle)">
+    <circle cx="128" cy="128" r="120" fill="url(#bg)"/>
+    <path d="M-8 186C49 143 86 157 128 181s83 21 140-18v110H-8Z" fill="#ed6b28"/>
+    <path d="M-5 201c57-39 95-31 139-7s79 22 127-8" fill="none" stroke="#f7ce52" stroke-width="9" opacity=".95"/>
+    <g fill="url(#gold)" stroke="#a86c07" stroke-width="3" stroke-linejoin="round">
+      <path d="M69 89 82 48l25 24 21-39 22 39 25-24 12 41Z"/>
+      <path d="M72 90h112l-9 25H81Z"/>
+    </g>
+    <g transform="translate(128 145)">
+      <circle r="42" fill="#f8fafc" stroke="#d8e1eb" stroke-width="4"/>
+      <path d="m0-17 16 12-6 19h-20l-6-19Z" fill="#0b2851"/>
+      <g fill="#0b2851">
+        <path d="M-5-40 9-38 17-25 7-17-8-21Z"/>
+        <path d="m38-12 4 14-8 13-13-4-3-15Z"/>
+        <path d="m28 30-11 10H2l-5-13 12-9Z"/>
+        <path d="m-28 30-12-9 1-15 14-5 9 12Z"/>
+        <path d="m-39-12 9-12 15 1 5 14-11 10Z"/>
+      </g>
+    </g>
+    <text x="128" y="219" fill="#fff7cf" font-family="Arial, sans-serif" font-size="22" font-weight="900" text-anchor="middle">3 REYES</text>
+  </g>
+  <circle cx="128" cy="128" r="119" fill="none" stroke="url(#gold)" stroke-width="10"/>
+  <circle cx="128" cy="128" r="108" fill="none" stroke="#fff1a4" stroke-width="2" opacity=".72"/>
+</svg>

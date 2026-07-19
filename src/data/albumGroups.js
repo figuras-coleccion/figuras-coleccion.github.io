@@ -1,22 +1,4 @@
-import { teams, teamNames, getTeamStickerCount } from './stickersData'
-
-const FWC_GROUPS = [
-  {
-    id: 'fwc-specials',
-    title: 'FWC - Especiales 🏆',
-    codes: ['00', 'FWC1', 'FWC2', 'FWC3', 'FWC4']
-  },
-  {
-    id: 'fwc-ball-countries',
-    title: 'FWC - Balón ⚽ y Países 🌎',
-    codes: ['FWC5', 'FWC6', 'FWC7', 'FWC8']
-  },
-  {
-    id: 'fwc-history',
-    title: 'FWC - Historia 📜',
-    codes: Array.from({ length: 11 }, (_, index) => `FWC${index + 9}`)
-  }
-]
+import { activeAlbumCatalog, albumGroups } from './stickersData.js'
 
 function splitTeamName(value = '') {
   const raw = String(value).trim()
@@ -26,50 +8,57 @@ function splitTeamName(value = '') {
   const spanishMatch = withoutFlag.match(/\(([^)]+)\)\s*$/)
   const name = spanishMatch ? spanishMatch[1] : withoutFlag
 
-  return {
-    flag,
-    name: name || raw
-  }
+  return { flag, name: name || raw }
 }
 
 export function getTeamDisplayTitle(team) {
-  const { flag, name } = splitTeamName(teamNames[team] || team)
+  const group = albumGroups.find(item => item.team === team)
+  if (group && activeAlbumCatalog.id !== 'panini-world-cup-2026') {
+    return `${team} - ${group.title}`
+  }
+
+  const { flag, name } = splitTeamName(group?.title || team)
   return `${team} - ${name}${flag ? ` ${flag}` : ''}`
 }
 
 export function buildAlbumGroups() {
-  return [
-    ...FWC_GROUPS,
-    ...teams.map(team => ({
-      id: `team-${team.toLowerCase()}`,
-      team,
-      title: getTeamDisplayTitle(team),
-      codes: Array.from({ length: getTeamStickerCount(team) }, (_, index) => `${team}${index + 1}`)
-    }))
-  ]
+  return albumGroups.map(group => ({
+    ...group,
+    title: activeAlbumCatalog.id === 'panini-world-cup-2026' && group.team
+      ? getTeamDisplayTitle(group.team)
+      : group.title,
+    codes: [...group.codes]
+  }))
+}
+
+export function getAlbumGroup(groupId) {
+  const normalized = String(groupId || '').trim().toLowerCase()
+  return albumGroups.find(group => (
+    group.id.toLowerCase() === normalized ||
+    String(group.team || '').toLowerCase() === normalized
+  )) || null
 }
 
 export function getStickerDisplayNumber(code = '') {
-  const normalized = String(code).trim().toUpperCase()
-  if (normalized === '00') return '00'
+  const normalized = String(code).trim().toUpperCase().replace(/^(E|T)-(?=\d)/, '$1')
+  if (normalized === '00' || normalized === '0') return normalized
+  if (/^\d+$/.test(normalized)) return String(Number(normalized))
 
   const match = normalized.match(/(\d+)$/)
   return match ? String(Number(match[1])) : normalized
 }
 
 export function isIrregularStickerCode(code = '') {
-  const normalized = String(code).trim().toUpperCase()
-  if (normalized === '00') return true
-  if (/^FWC[1-4]$/.test(normalized)) return true
-
-  const match = normalized.match(/^[A-Z]{2,3}(\d+)$/)
-  return Boolean(match && Number(match[1]) === 1)
+  const normalized = String(code).trim().toUpperCase().replace(/^(E|T)-(?=\d)/, '$1')
+  return activeAlbumCatalog.irregularCodeSet.has(normalized)
 }
 
 export function getAlbumGroupIdFromLegacyPage(pageNumber) {
+  if (activeAlbumCatalog.id !== 'panini-world-cup-2026') return albumGroups[0]?.id || ''
+
   const page = Number(pageNumber)
   if (!Number.isFinite(page) || page <= 1) return 'fwc-specials'
 
-  const team = teams[page - 2]
-  return team ? `team-${team.toLowerCase()}` : 'fwc-specials'
+  const countries = albumGroups.filter(group => group.team)
+  return countries[page - 2]?.id || 'fwc-specials'
 }

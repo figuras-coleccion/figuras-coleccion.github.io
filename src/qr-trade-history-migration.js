@@ -1,5 +1,14 @@
 import { auth, db, ref, get, update, onAuthStateChanged } from './firebase'
 import { buildTradeHistoryUpdates } from './trade-history'
+import { DEFAULT_ALBUM_ID } from './albums/constants'
+import { getAlbumChildPath, getStoredActiveAlbumId } from './albums/runtime'
+
+function belongsToActiveAlbum(record = {}) {
+  const activeAlbumId = getStoredActiveAlbumId()
+  return record.albumId
+    ? record.albumId === activeAlbumId
+    : activeAlbumId === DEFAULT_ALBUM_ID
+}
 
 function quantitiesFromCodes(codes = []) {
   return Array.from(codes || []).reduce((result, code) => {
@@ -15,7 +24,8 @@ async function saveTrade(data) {
 }
 
 async function migrateForUser(uid) {
-  const markerSnapshot = await get(ref(db, `users/${uid}/collectionStats/qrHistoryMigratedAt`))
+  const markerPath = `${getAlbumChildPath(uid, 'collectionStats')}/qrHistoryMigratedAt`
+  const markerSnapshot = await get(ref(db, markerPath))
   if (markerSnapshot.exists()) return
 
   const [outgoingSnapshot, decisionsSnapshot, inboxSnapshot] = await Promise.all([
@@ -29,7 +39,7 @@ async function migrateForUser(uid) {
   const inbox = inboxSnapshot.val() || {}
 
   for (const session of Object.values(outgoing)) {
-    if (!session?.id || session.status !== 'completed') continue
+    if (!session?.id || session.status !== 'completed' || !belongsToActiveAlbum(session)) continue
     await saveTrade({
       uid,
       tradeId: session.id,
@@ -44,9 +54,9 @@ async function migrateForUser(uid) {
   }
 
   for (const decision of Object.values(decisions)) {
-    if (!decision?.sessionId || decision.status !== 'accepted') continue
+    if (!decision?.sessionId || decision.status !== 'accepted' || !belongsToActiveAlbum(decision)) continue
     const session = inbox[decision.sessionId] || {}
-    if (!session?.id) continue
+    if (!session?.id || !belongsToActiveAlbum(session)) continue
 
     await saveTrade({
       uid,
@@ -62,7 +72,7 @@ async function migrateForUser(uid) {
   }
 
   await update(ref(db), {
-    [`users/${uid}/collectionStats/qrHistoryMigratedAt`]: Date.now()
+    [markerPath]: Date.now()
   })
 }
 

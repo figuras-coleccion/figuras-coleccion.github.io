@@ -1,6 +1,11 @@
 import { onValue, push } from 'firebase/database'
 import { auth, db, ref, update, onAuthStateChanged } from './firebase'
 import { buildTradeHistoryUpdates } from './trade-history'
+import { getAlbumChildPath, getStoredActiveAlbumId } from './albums/runtime'
+
+function albumPath(userId, child) {
+  return getAlbumChildPath(userId, child, getStoredActiveAlbumId())
+}
 
 let stopAuth = null
 let stopStickers = null
@@ -70,7 +75,7 @@ async function inspect(beforeSnapshot = {}, afterSnapshot = {}) {
   const deliveredTotal = Object.values(delivered).reduce((sum, value) => sum + value, 0)
   if (!receivedTotal || !deliveredTotal) return
 
-  const tradeId = context.tradeId || push(ref(db, `users/${uid}/tradeHistory`)).key
+  const tradeId = context.tradeId || push(ref(db, albumPath(uid, 'tradeHistory'))).key
   if (!tradeId) return
 
   const updates = await buildTradeHistoryUpdates({
@@ -96,7 +101,7 @@ function bind(user) {
   if (!uid) return
 
   let first = true
-  stopStickers = onValue(ref(db, `users/${uid}/stickers`), snapshot => {
+  stopStickers = onValue(ref(db, albumPath(uid, 'stickers')), snapshot => {
     const current = snapshot.val() || {}
     if (first) {
       first = false

@@ -1,6 +1,8 @@
 import { onAuthStateChanged } from 'firebase/auth'
 import { onValue, push } from 'firebase/database'
 import { auth, db, ref, get, update } from './firebase'
+import { DEFAULT_ALBUM_ID } from './albums/constants'
+import { getAlbumChildPath, getStoredActiveAlbumId, isProfileUsingAlbum } from './albums/runtime'
 
 let sending = false
 let hostOff = null
@@ -10,6 +12,13 @@ let activeHost = null
 const sum = values => Object.values(values || {}).reduce((total, value) => total + Math.max(0, Number(value) || 0), 0)
 const codeOf = token => String(token.querySelector('small')?.textContent || '').trim().toUpperCase()
 const cleanSticker = value => ({ owned: Boolean(value?.owned), duplicates: Math.max(0, Number(value?.duplicates) || 0) })
+
+function belongsToActiveAlbum(session = {}) {
+  const activeAlbumId = getStoredActiveAlbumId()
+  return session.albumId
+    ? session.albumId === activeAlbumId
+    : activeAlbumId === DEFAULT_ALBUM_ID
+}
 
 function partnerId() {
   try { return String(new URL(location.href).searchParams.get('qrUser') || '').trim() } catch { return '' }
@@ -97,11 +106,15 @@ async function sendProposal() {
     const [guestProfile, hostProfile] = await Promise.all([
       get(ref(db, `users/${guest.uid}/profile`)), get(ref(db, `users/${hostId}/profile`))
     ])
+    const albumId = getStoredActiveAlbumId()
+    if (!isProfileUsingAlbum(hostProfile.val() || {}, albumId)) {
+      throw new Error('La otra persona tiene cargado un álbum diferente.')
+    }
     const sessionRef = push(ref(db, `qrTradeHostSessions/${hostId}`))
     const id = sessionRef.key
     const now = Date.now()
     const proposal = {
-      id, hostId, guestId: guest.uid,
+      id, albumId, hostId, guestId: guest.uid,
       hostName: `${hostProfile.val()?.name || ''} ${hostProfile.val()?.surname || ''}`.trim() || 'Anfitrión',
       guestName: `${guestProfile.val()?.name || ''} ${guestProfile.val()?.surname || ''}`.trim() || 'Coleccionista',
       guestReceives: trade.receives, guestDelivers: trade.delivers,
@@ -121,6 +134,11 @@ async function sendProposal() {
 
 async function resolveHost(session, accepted) {
   if (!session) return
+  const albumId = session.albumId || getStoredActiveAlbumId()
+  if (albumId !== getStoredActiveAlbumId()) {
+    overlay('Álbum diferente', 'Carga el mismo álbum que la otra persona antes de aceptar.', { label: 'Cerrar', primary: true, action: closeOverlay })
+    return
+  }
   if (!accepted) {
     await update(ref(db), {
       [`qrTradeHostSessions/${session.hostId}/${session.id}/status`]: 'rejected',
@@ -137,8 +155,10 @@ async function resolveHost(session, accepted) {
       [`qrTradeHostSessions/${session.hostId}/${session.id}/status`]: 'processing',
       [`qrTradeGuestSessions/${session.guestId}/${session.id}/status`]: 'processing'
     })
+    const hostStickersPath = getAlbumChildPath(session.hostId, 'stickers', albumId)
+    const guestStickersPath = getAlbumChildPath(session.guestId, 'stickers', albumId)
     const [hostSnap, guestSnap] = await Promise.all([
-      get(ref(db, `users/${session.hostId}/stickers`)), get(ref(db, `users/${session.guestId}/stickers`))
+      get(ref(db, hostStickersPath)), get(ref(db, guestStickersPath))
     ])
     const host = { ...(hostSnap.val() || {}) }
     const guest = { ...(guestSnap.val() || {}) }
@@ -146,8 +166,8 @@ async function resolveHost(session, accepted) {
     ;(session.guestReceives || []).forEach(code => { transfer(host, guest, code, 1); touchedHost.add(code); touchedGuest.add(code) })
     Object.entries(session.guestDelivers || {}).forEach(([code, qty]) => { transfer(guest, host, code, qty); touchedHost.add(code); touchedGuest.add(code) })
     const changes = {}
-    touchedHost.forEach(code => { changes[`users/${session.hostId}/stickers/${code}`] = host[code] })
-    touchedGuest.forEach(code => { changes[`users/${session.guestId}/stickers/${code}`] = guest[code] })
+    touchedHost.forEach(code => { changes[`${hostStickersPath}/${code}`] = host[code] })
+    touchedGuest.forEach(code => { changes[`${guestStickersPath}/${code}`] = guest[code] })
     changes[`qrTradeHostSessions/${session.hostId}/${session.id}/status`] = 'completed'
     changes[`qrTradeGuestSessions/${session.guestId}/${session.id}/status`] = 'completed'
     changes[`qrTradeHostSessions/${session.hostId}/${session.id}/completedAt`] = Date.now()
@@ -167,12 +187,12 @@ function subscribe(uid) {
   hostOff?.(); guestOff?.(); hostOff = guestOff = null
   if (!uid) return
   hostOff = onValue(ref(db, `qrTradeHostSessions/${uid}`), snapshot => {
-    const sessions = Object.values(snapshot.val() || {}).filter(item => item?.status === 'pending' && (!item.expiresAt || item.expiresAt > Date.now())).sort((a,b) => b.createdAt-a.createdAt)
+    const sessions = Object.values(snapshot.val() || {}).filter(item => item?.status === 'pending' && belongsToActiveAlbum(item) && (!item.expiresAt || item.expiresAt > Date.now())).sort((a,b) => b.createdAt-a.createdAt)
     activeHost = sessions[0] || null
     if (activeHost) overlay('Solicitud de trueque QR', `${activeHost.guestName} quiere intercambiar contigo.\nTú recibes ${sum(activeHost.guestDelivers)} y entregas ${(activeHost.guestReceives || []).length}.`, { label: 'Aceptar', primary: true, action: () => resolveHost(activeHost, true) }, { label: 'Rechazar', action: () => resolveHost(activeHost, false) })
   })
   guestOff = onValue(ref(db, `qrTradeGuestSessions/${uid}`), snapshot => {
-    const sessions = Object.values(snapshot.val() || {}).sort((a,b) => (b.completedAt || b.createdAt)-(a.completedAt || a.createdAt))
+    const sessions = Object.values(snapshot.val() || {}).filter(belongsToActiveAlbum).sort((a,b) => (b.completedAt || b.createdAt)-(a.completedAt || a.createdAt))
     const latest = sessions[0]
     if (!latest) return
     if (latest.status === 'pending') overlay('Esperando confirmación', `${latest.hostName} debe aceptar el trueque.`, { label: 'Seguir esperando', primary: true, action: closeOverlay })

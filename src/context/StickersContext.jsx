@@ -1,7 +1,10 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useUser } from './UserContext'
+import { useAlbum } from './AlbumContext'
 import { db, ref, get, update } from '../firebase'
 import { getAllStickers } from '../data/stickersData'
+import { DEFAULT_ALBUM_ID } from '../albums/constants'
+import { getAlbumChildPath } from '../albums/runtime'
 
 const StickersContext = createContext()
 
@@ -31,6 +34,12 @@ function getOrderedIndex(code) {
   return STANDARD_CODE_SET.has(code) ? STANDARD_CODES.indexOf(code) : Number.MAX_SAFE_INTEGER
 }
 
+function localBackupKey(uid, albumId) {
+  return albumId === DEFAULT_ALBUM_ID
+    ? `panini_stickers_${uid}`
+    : `panini_stickers_${uid}_${albumId}`
+}
+
 function mergeCloudStickers(data = {}) {
   const merged = { ...EMPTY_STICKERS }
 
@@ -44,6 +53,8 @@ function mergeCloudStickers(data = {}) {
 
 export function StickersProvider({ children }) {
   const { user } = useUser()
+  const { activeAlbumId, activeAlbum } = useAlbum()
+  const stickersPath = user?.id ? getAlbumChildPath(user.id, 'stickers', activeAlbumId) : ''
   const [stickers, setStickers] = useState({ ...EMPTY_STICKERS })
   const [savedStickers, setSavedStickers] = useState({ ...EMPTY_STICKERS })
   const [pendingChanges, setPendingChanges] = useState({})
@@ -59,7 +70,7 @@ export function StickersProvider({ children }) {
 
     const loadStickers = async () => {
       try {
-        const snapshot = await get(ref(db, `users/${user.id}/stickers`))
+        const snapshot = await get(ref(db, stickersPath))
         if (snapshot.exists()) {
           const cloudStickers = mergeCloudStickers(snapshot.val())
           setStickers(cloudStickers)
@@ -71,7 +82,7 @@ export function StickersProvider({ children }) {
       } catch (err) {
         console.error('Error loading stickers:', err)
         try {
-          const saved = localStorage.getItem(`panini_stickers_${user.id}`)
+          const saved = localStorage.getItem(localBackupKey(user.id, activeAlbumId))
           if (saved) {
             const localBackup = mergeCloudStickers(JSON.parse(saved))
             setStickers(localBackup)
@@ -82,7 +93,7 @@ export function StickersProvider({ children }) {
           }
         } catch (localErr) {
           console.warn('Backup local corrupto. Se usará lista vacía.', localErr)
-          localStorage.removeItem(`panini_stickers_${user.id}`)
+          localStorage.removeItem(localBackupKey(user.id, activeAlbumId))
           setStickers({ ...EMPTY_STICKERS })
           setSavedStickers({ ...EMPTY_STICKERS })
         }
@@ -90,13 +101,13 @@ export function StickersProvider({ children }) {
     }
 
     loadStickers()
-  }, [user])
+  }, [activeAlbumId, stickersPath, user])
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem(`panini_stickers_${user.id}`, JSON.stringify(stickers))
+      localStorage.setItem(localBackupKey(user.id, activeAlbumId), JSON.stringify(stickers))
     }
-  }, [stickers, user])
+  }, [activeAlbumId, stickers, user])
 
   const isStickerLocked = useCallback((code) => {
     const normalizedCode = String(code || '').trim().toUpperCase()
@@ -164,7 +175,7 @@ export function StickersProvider({ children }) {
 
       normalizedCodes.forEach(code => {
         const current = stickers[code] || { owned: false, duplicates: 0 }
-        updates[`users/${user.id}/stickers/${code}`] = current
+        updates[`${stickersPath}/${code}`] = current
         savedSnapshotUpdates[code] = normalizeSticker(current)
       })
 
@@ -182,7 +193,7 @@ export function StickersProvider({ children }) {
       alert('Error al guardar esta página. Tus cambios se conservaron localmente.')
       return false
     }
-  }, [user, stickers])
+  }, [stickers, stickersPath, user])
 
   const saveToCloud = useCallback(async () => {
     if (!user) return false
@@ -190,7 +201,7 @@ export function StickersProvider({ children }) {
     try {
       const updates = {}
       Object.keys(pendingChanges).forEach(code => {
-        updates[`users/${user.id}/stickers/${code}`] = stickers[code]
+        updates[`${stickersPath}/${code}`] = stickers[code]
       })
 
       if (Object.keys(updates).length > 0) {
@@ -212,7 +223,7 @@ export function StickersProvider({ children }) {
       alert('Error al guardar en la nube. Tus cambios se guardaron localmente.')
       return false
     }
-  }, [user, stickers, pendingChanges])
+  }, [pendingChanges, stickers, stickersPath, user])
 
   const saveTeamPage = useCallback(async (teamCode) => {
     if (!user) return false
@@ -221,14 +232,16 @@ export function StickersProvider({ children }) {
       const updates = {}
       const savedSnapshotUpdates = {}
 
+      const group = activeAlbum.albumGroups.find(item => (
+        item.id === teamCode || item.team === teamCode
+      ))
+      const pageCodes = new Set(group?.codes || [])
+
       Object.keys(stickers).forEach(code => {
-        const belongsToPage =
-          (teamCode === 'specials' && (code.startsWith('FWC') || code === '00')) ||
-          (teamCode === 'logo' && code === '00') ||
-          (teamCode !== 'specials' && teamCode !== 'logo' && code.startsWith(teamCode))
+        const belongsToPage = pageCodes.has(code)
 
         if (belongsToPage) {
-          updates[`users/${user.id}/stickers/${code}`] = stickers[code]
+          updates[`${stickersPath}/${code}`] = stickers[code]
           savedSnapshotUpdates[code] = normalizeSticker(stickers[code])
         }
       })
@@ -250,7 +263,7 @@ export function StickersProvider({ children }) {
       console.error('Error saving team page:', err)
       return false
     }
-  }, [user, stickers])
+  }, [activeAlbum.albumGroups, stickers, stickersPath, user])
 
   const deleteSavedSticker = useCallback(async (code) => {
     if (!user) {
@@ -263,7 +276,7 @@ export function StickersProvider({ children }) {
     const removedSticker = { owned: false, duplicates: 0 }
 
     await update(ref(db), {
-      [`users/${user.id}/stickers/${normalizedCode}`]: removedSticker
+      [`${stickersPath}/${normalizedCode}`]: removedSticker
     })
 
     setStickers(prev => ({
@@ -284,7 +297,7 @@ export function StickersProvider({ children }) {
 
     setLastSaved(Date.now())
     return true
-  }, [user])
+  }, [stickersPath, user])
 
   const applyManualTrade = useCallback(async ({ receivedCodes = [], deliveredCodes = [] } = {}) => {
     if (!user) {
@@ -325,7 +338,7 @@ export function StickersProvider({ children }) {
 
     const updates = {}
     changedCodes.forEach(code => {
-      updates[`users/${user.id}/stickers/${code}`] = nextByCode[code]
+      updates[`${stickersPath}/${code}`] = nextByCode[code]
     })
 
     await update(ref(db), updates)
@@ -344,7 +357,7 @@ export function StickersProvider({ children }) {
       received: appliedReceived,
       delivered: appliedDelivered
     }
-  }, [user, stickers])
+  }, [stickers, stickersPath, user])
 
   const getOwnedStickers = useCallback(() => {
     return STANDARD_CODES.filter(code => savedStickers[code]?.owned)

@@ -1,6 +1,8 @@
 import { increment, onValue, push } from 'firebase/database'
 import { auth, db, ref, get, update, onAuthStateChanged } from './firebase'
-import { specials, teams, teamNames, getTeamStickerCount } from './data/stickersData'
+import { activeAlbumCatalog, albumGroups } from './data/stickersData'
+import { DEFAULT_ALBUM_ID } from './albums/constants'
+import { getAlbumChildPath, getStoredActiveAlbumId } from './albums/runtime'
 
 export const COLLECTION_HISTORY_VERSION = 1
 
@@ -13,18 +15,24 @@ const TRACKED_FIELDS = [
   'duplicateRemovalsTotal'
 ]
 
-export const collectionSections = [
-  {
-    id: 'specials',
-    title: 'FWC',
-    codes: specials
-  },
-  ...teams.map(team => ({
-    id: team,
-    title: teamNames[team] || team,
-    codes: Array.from({ length: getTeamStickerCount(team) }, (_, index) => `${team}${index + 1}`)
+export const collectionSections = activeAlbumCatalog.id === DEFAULT_ALBUM_ID
+  ? [
+      {
+        id: 'specials',
+        title: 'FWC',
+        codes: albumGroups.filter(group => group.placement === 'leading').flatMap(group => group.codes)
+      },
+      ...albumGroups.filter(group => group.team).map(group => ({
+        id: group.team,
+        title: group.title,
+        codes: [...group.codes]
+      }))
+    ]
+  : albumGroups.map(group => ({
+    id: group.id,
+    title: group.title,
+    codes: [...group.codes]
   }))
-]
 
 let stopAuthListener = null
 let stopStickerListener = null
@@ -32,6 +40,10 @@ let activeUid = ''
 let previousStickers = {}
 let completionCache = {}
 let processingQueue = Promise.resolve()
+
+function albumPath(uid, child) {
+  return getAlbumChildPath(uid, child, getStoredActiveAlbumId())
+}
 
 function positiveNumber(value) {
   const number = Number(value)
@@ -54,7 +66,7 @@ function stateOf(value = {}) {
 }
 
 function eventKey(uid) {
-  return push(ref(db, `users/${uid}/collectionEvents`)).key
+  return push(ref(db, albumPath(uid, 'collectionEvents'))).key
 }
 
 function isSectionComplete(section, stickers = {}) {
@@ -64,7 +76,7 @@ function isSectionComplete(section, stickers = {}) {
 function createCollectionEvent(updates, uid, event) {
   const key = eventKey(uid)
   if (!key) return
-  updates[`users/${uid}/collectionEvents/${key}`] = event
+  updates[`${albumPath(uid, 'collectionEvents')}/${key}`] = event
 }
 
 function preserveTrackedMetadata(previous = {}, current = {}) {
@@ -83,9 +95,9 @@ function preserveTrackedMetadata(previous = {}, current = {}) {
 
 async function ensureMigration(uid) {
   const [stickersSnapshot, statsSnapshot, completionsSnapshot] = await Promise.all([
-    get(ref(db, `users/${uid}/stickers`)),
-    get(ref(db, `users/${uid}/collectionStats`)),
-    get(ref(db, `users/${uid}/sectionCompletions`))
+    get(ref(db, albumPath(uid, 'stickers'))),
+    get(ref(db, albumPath(uid, 'collectionStats'))),
+    get(ref(db, albumPath(uid, 'sectionCompletions')))
   ])
 
   const rawStickers = stickersSnapshot.val() || {}
@@ -127,7 +139,7 @@ async function ensureMigration(uid) {
     normalized[code] = record
 
     if (JSON.stringify(record) !== JSON.stringify(rawValue || {})) {
-      updates[`users/${uid}/stickers/${code}`] = record
+      updates[`${albumPath(uid, 'stickers')}/${code}`] = record
     }
   })
 
@@ -144,23 +156,23 @@ async function ensureMigration(uid) {
           migrated: true,
           stickerCount: section.codes.length
         }
-        updates[`users/${uid}/sectionCompletions/${section.id}`] = completion
+        updates[`${albumPath(uid, 'sectionCompletions')}/${section.id}`] = completion
         existingCompletions[section.id] = completion
       }
     })
 
-    updates[`users/${uid}/collectionStats/historyVersion`] = COLLECTION_HISTORY_VERSION
-    updates[`users/${uid}/collectionStats/trackingStartedAt`] = now
-    updates[`users/${uid}/collectionStats/baselineOwned`] = ownedCount
-    updates[`users/${uid}/collectionStats/baselineDuplicates`] = duplicateCount
-    updates[`users/${uid}/collectionStats/duplicateAdds`] = Math.max(Number(stats.duplicateAdds || 0), duplicateCount)
-    updates[`users/${uid}/collectionStats/duplicateRemovals`] = Number(stats.duplicateRemovals || 0)
-    updates[`users/${uid}/collectionStats/tradesCompleted`] = Number(stats.tradesCompleted || 0)
-    updates[`users/${uid}/collectionStats/manualTradesCompleted`] = Number(stats.manualTradesCompleted || 0)
-    updates[`users/${uid}/collectionStats/qrTradesCompleted`] = Number(stats.qrTradesCompleted || 0)
-    updates[`users/${uid}/collectionStats/stickersReceivedInTrades`] = Number(stats.stickersReceivedInTrades || 0)
-    updates[`users/${uid}/collectionStats/stickersDeliveredInTrades`] = Number(stats.stickersDeliveredInTrades || 0)
-    updates[`users/${uid}/collectionStats/lastActivityAt`] = now
+    updates[`${albumPath(uid, 'collectionStats')}/historyVersion`] = COLLECTION_HISTORY_VERSION
+    updates[`${albumPath(uid, 'collectionStats')}/trackingStartedAt`] = now
+    updates[`${albumPath(uid, 'collectionStats')}/baselineOwned`] = ownedCount
+    updates[`${albumPath(uid, 'collectionStats')}/baselineDuplicates`] = duplicateCount
+    updates[`${albumPath(uid, 'collectionStats')}/duplicateAdds`] = Math.max(Number(stats.duplicateAdds || 0), duplicateCount)
+    updates[`${albumPath(uid, 'collectionStats')}/duplicateRemovals`] = Number(stats.duplicateRemovals || 0)
+    updates[`${albumPath(uid, 'collectionStats')}/tradesCompleted`] = Number(stats.tradesCompleted || 0)
+    updates[`${albumPath(uid, 'collectionStats')}/manualTradesCompleted`] = Number(stats.manualTradesCompleted || 0)
+    updates[`${albumPath(uid, 'collectionStats')}/qrTradesCompleted`] = Number(stats.qrTradesCompleted || 0)
+    updates[`${albumPath(uid, 'collectionStats')}/stickersReceivedInTrades`] = Number(stats.stickersReceivedInTrades || 0)
+    updates[`${albumPath(uid, 'collectionStats')}/stickersDeliveredInTrades`] = Number(stats.stickersDeliveredInTrades || 0)
+    updates[`${albumPath(uid, 'collectionStats')}/lastActivityAt`] = now
 
     createCollectionEvent(updates, uid, {
       type: 'migration_baseline',
@@ -240,12 +252,12 @@ async function reconcileStickerChanges(uid, beforeSnapshot = {}, afterSnapshot =
 
     if (!stateChanged) {
       const { repaired, changed } = preserveTrackedMetadata(previousRaw, currentRaw)
-      if (changed) updates[`users/${uid}/stickers/${code}`] = normalizeTrackedSticker(repaired)
+      if (changed) updates[`${albumPath(uid, 'stickers')}/${code}`] = normalizeTrackedSticker(repaired)
       return
     }
 
     const transition = buildTransitionRecord(previousRaw, currentRaw, now)
-    updates[`users/${uid}/stickers/${code}`] = transition.record
+    updates[`${albumPath(uid, 'stickers')}/${code}`] = transition.record
 
     if (transition.ownedAdded) {
       obtainedAdded += 1
@@ -296,7 +308,7 @@ async function reconcileStickerChanges(uid, beforeSnapshot = {}, afterSnapshot =
 
   const mergedAfter = { ...afterSnapshot }
   Object.entries(updates).forEach(([path, value]) => {
-    const prefix = `users/${uid}/stickers/`
+    const prefix = `${albumPath(uid, 'stickers')}/`
     if (path.startsWith(prefix)) mergedAfter[path.slice(prefix.length)] = value
   })
 
@@ -313,7 +325,7 @@ async function reconcileStickerChanges(uid, beforeSnapshot = {}, afterSnapshot =
     }
 
     completionCache[section.id] = completion
-    updates[`users/${uid}/sectionCompletions/${section.id}`] = completion
+    updates[`${albumPath(uid, 'sectionCompletions')}/${section.id}`] = completion
     createCollectionEvent(updates, uid, {
       type: 'section_completed',
       source: 'collection',
@@ -324,13 +336,13 @@ async function reconcileStickerChanges(uid, beforeSnapshot = {}, afterSnapshot =
     })
   })
 
-  if (obtainedAdded > 0) updates[`users/${uid}/collectionStats/stickersObtainedTracked`] = increment(obtainedAdded)
-  if (ownedRemoved > 0) updates[`users/${uid}/collectionStats/stickersRemovedTracked`] = increment(ownedRemoved)
-  if (duplicatesAdded > 0) updates[`users/${uid}/collectionStats/duplicateAdds`] = increment(duplicatesAdded)
-  if (duplicatesRemoved > 0) updates[`users/${uid}/collectionStats/duplicateRemovals`] = increment(duplicatesRemoved)
+  if (obtainedAdded > 0) updates[`${albumPath(uid, 'collectionStats')}/stickersObtainedTracked`] = increment(obtainedAdded)
+  if (ownedRemoved > 0) updates[`${albumPath(uid, 'collectionStats')}/stickersRemovedTracked`] = increment(ownedRemoved)
+  if (duplicatesAdded > 0) updates[`${albumPath(uid, 'collectionStats')}/duplicateAdds`] = increment(duplicatesAdded)
+  if (duplicatesRemoved > 0) updates[`${albumPath(uid, 'collectionStats')}/duplicateRemovals`] = increment(duplicatesRemoved)
 
   if (obtainedAdded || ownedRemoved || duplicatesAdded || duplicatesRemoved) {
-    updates[`users/${uid}/collectionStats/lastActivityAt`] = now
+    updates[`${albumPath(uid, 'collectionStats')}/lastActivityAt`] = now
   }
 
   if (Object.keys(updates).length > 0) {
@@ -356,7 +368,7 @@ async function bindUser(user) {
   }
 
   let firstSnapshot = true
-  stopStickerListener = onValue(ref(db, `users/${activeUid}/stickers`), snapshot => {
+  stopStickerListener = onValue(ref(db, albumPath(activeUid, 'stickers')), snapshot => {
     const current = snapshot.val() || {}
 
     if (firstSnapshot) {

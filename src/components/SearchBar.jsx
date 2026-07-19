@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { useAlbum } from '../context/AlbumContext'
 
 export default function SearchBar({ onSearch }) {
+  const { activeAlbum } = useAlbum()
   const [query, setQuery] = useState('')
+  const examples = activeAlbum.publisher === '3 Reyes' ? '63, E1, T1' : 'ARG5, FWC1, 00'
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -14,7 +17,7 @@ export default function SearchBar({ onSearch }) {
     <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px' }}>
       <input
         type="text"
-        placeholder="Buscar código (ej: ARG5, FWC1, 00)..."
+        placeholder={`Buscar código (ej: ${examples})...`}
         value={query}
         onChange={(e) => setQuery(e.target.value.toUpperCase())}
         style={{ flex: 1 }}

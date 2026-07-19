@@ -1,6 +1,7 @@
 import { onValue, set } from 'firebase/database'
 import { db, ref, get, update } from './firebase'
 import { closeQrOverlay, normalizeSticker, showQrOverlay } from './qr-trade-ui'
+import { getAlbumChildPath, getStoredActiveAlbumId } from './albums/runtime'
 
 let ackOff = null
 
@@ -30,8 +31,13 @@ function waitAck(session) {
 
 export async function resolveQrHost(session, accepted, hostUid) {
   if (!session || session.hostId !== hostUid) return
+  const albumId = session.albumId || getStoredActiveAlbumId()
+  if (albumId !== getStoredActiveAlbumId()) {
+    showQrOverlay({ key: `host-album-mismatch-${session.id}`, title: 'Álbum diferente', message: 'Carga el mismo álbum que la otra persona antes de aceptar.', primary: { label: 'Cerrar', primary: true, action: closeQrOverlay } })
+    return
+  }
   if (!accepted) {
-    await set(ref(db, `users/${hostUid}/qrTradeDecisions/${session.id}`), { sessionId: session.id, hostId: hostUid, guestId: session.guestId, status: 'rejected', decidedAt: Date.now() })
+    await set(ref(db, `users/${hostUid}/qrTradeDecisions/${session.id}`), { sessionId: session.id, albumId, hostId: hostUid, guestId: session.guestId, status: 'rejected', decidedAt: Date.now() })
     closeQrOverlay()
     return
   }
@@ -40,7 +46,9 @@ export async function resolveQrHost(session, accepted, hostUid) {
   try {
     const previous = await get(ref(db, `users/${hostUid}/qrTradeDecisions/${session.id}`))
     if (previous.exists()) throw new Error('Esta solicitud ya fue atendida.')
-    const [hostSnap, guestSnap] = await Promise.all([get(ref(db, `users/${hostUid}/stickers`)), get(ref(db, `users/${session.guestId}/stickers`))])
+    const hostStickersPath = getAlbumChildPath(hostUid, 'stickers', albumId)
+    const guestStickersPath = getAlbumChildPath(session.guestId, 'stickers', albumId)
+    const [hostSnap, guestSnap] = await Promise.all([get(ref(db, hostStickersPath)), get(ref(db, guestStickersPath))])
     const host = { ...(hostSnap.val() || {}) }
     const guest = { ...(guestSnap.val() || {}) }
     const hostCodes = new Set(), guestCodes = new Set()
@@ -57,8 +65,8 @@ export async function resolveQrHost(session, accepted, hostUid) {
     const guestPatch = {}
     guestCodes.forEach(code => { guestPatch[code] = normalizeSticker(guest[code]) })
     const changes = {}
-    hostCodes.forEach(code => { changes[`users/${hostUid}/stickers/${code}`] = normalizeSticker(host[code]) })
-    changes[`users/${hostUid}/qrTradeDecisions/${session.id}`] = { sessionId: session.id, hostId: hostUid, guestId: session.guestId, status: 'accepted', guestPatch, decidedAt: Date.now() }
+    hostCodes.forEach(code => { changes[`${hostStickersPath}/${code}`] = normalizeSticker(host[code]) })
+    changes[`users/${hostUid}/qrTradeDecisions/${session.id}`] = { sessionId: session.id, albumId, hostId: hostUid, guestId: session.guestId, status: 'accepted', guestPatch, decidedAt: Date.now() }
     await update(ref(db), changes)
     waitAck(session)
     showQrOverlay({ key: `host-wait-${session.id}`, title: 'Trueque aceptado', message: 'Tu álbum fue actualizado. Esperando que el huésped reciba la confirmación.' })

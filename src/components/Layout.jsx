@@ -2,6 +2,7 @@ import { Outlet, NavLink, Link, useLocation } from 'react-router-dom'
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useUser } from '../context/UserContext'
 import { useStickers } from '../context/StickersContext'
+import { useAlbum } from '../context/AlbumContext'
 import { useEditLock } from '../context/EditLockContext'
 import { db, ref, get } from '../firebase'
 import HowItWorksModal from './HowItWorksModal'
@@ -16,6 +17,7 @@ const headerStyles = `
 export default function Layout() {
   const { user, logout, isAdmin, markHowItWorksAsSeen } = useUser()
   const { pendingChanges, saveToCloud } = useStickers()
+  const { activeAlbum } = useAlbum()
   const { editingLocked, toggleEditingLock } = useEditLock()
   const location = useLocation()
   const [memberCount, setMemberCount] = useState(null)
@@ -93,8 +95,8 @@ export default function Layout() {
       <header className="app-header">
         <div className="brand-block">
           <div className="brand-primary">
-            <img className="brand-logo" src={`${import.meta.env.BASE_URL || '/'}iconopanini2026album.svg`} alt="Panini World Cup 2026 Sticker Tracker" />
-            <h1 className="brand-title"><span className="brand-title-line">Panini World Cup 2026</span><span className="brand-title-line">Sticker Tracker</span></h1>
+            <img className="brand-logo" src={`${import.meta.env.BASE_URL || '/'}${activeAlbum.icon}`} alt={activeAlbum.title} />
+            <h1 className="brand-title">{activeAlbum.brandTitleLines.map(line => <span key={line} className="brand-title-line">{line}</span>)}</h1>
           </div>
           <p className="brand-tagline">Completar el álbum es más rápido y fácil cuando todos aportamos.</p>
           {formattedMembers && <p className="brand-members">👥 {formattedMembers} miembros registrados</p>}

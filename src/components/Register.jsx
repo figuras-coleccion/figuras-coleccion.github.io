@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useUser } from '../context/UserContext'
+import { useAlbum } from '../context/AlbumContext'
+import { DEFAULT_ALBUM_ID } from '../albums/constants'
 import { COUNTRIES, detectCountryCode } from '../data/countries'
 
 function getAuthErrorMessage(err) {
@@ -45,6 +47,7 @@ function getAuthErrorMessage(err) {
 }
 
 export default function Register() {
+  const { activeAlbum } = useAlbum()
   const {
     registerUser,
     loginUser,
@@ -287,8 +290,8 @@ export default function Register() {
   return (
     <div className="register-page">
       <div className="register-card">
-        <h1>⚽ Panini World Cup 2026 Sticker Tracker</h1>
-        <p className="subtitle">World Cup Sticker Tracker</p>
+        <h1>{activeAlbum.id === DEFAULT_ALBUM_ID ? '⚽ Panini World Cup 2026 Sticker Tracker' : activeAlbum.shortTitle}</h1>
+        <p className="subtitle">{activeAlbum.id === DEFAULT_ALBUM_ID ? 'World Cup Sticker Tracker' : 'Mi álbum de figuritas'}</p>
 
         {screen === 'login' ? (
           <div className="login-method-card auth-single-screen">

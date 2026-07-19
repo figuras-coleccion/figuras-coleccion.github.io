@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useUser } from '../context/UserContext'
+import { useAlbum } from '../context/AlbumContext'
 import { db, ref, get } from '../firebase'
 import { allStickersOrdered } from '../data/stickersData'
 import { getCountryName } from '../data/countries'
+import { getAlbumStickersFromUser } from '../albums/runtime'
 
 function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase()
@@ -51,6 +53,7 @@ function sanitizeCsvValue(value) {
 
 export default function AdminDashboard() {
   const { user, isAdmin } = useUser()
+  const { activeAlbumId, activeAlbum } = useAlbum()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -60,7 +63,7 @@ export default function AdminDashboard() {
     if (!isAdmin) return
     loadUsers()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin])
+  }, [activeAlbumId, isAdmin])
 
   const loadUsers = async () => {
     setLoading(true)
@@ -76,7 +79,7 @@ export default function AdminDashboard() {
       const raw = snapshot.val() || {}
       const mapped = Object.entries(raw).map(([uid, record]) => {
         const profile = record?.profile || {}
-        const stats = computeUserStats(record?.stickers || {})
+        const stats = computeUserStats(getAlbumStickersFromUser(record, activeAlbumId))
         return {
           id: uid,
           profile,
@@ -185,6 +188,7 @@ export default function AdminDashboard() {
       <div className="admin-head">
         <div>
           <h2>🛡️ Panel administrador</h2>
+          <p>Álbum en vista: {activeAlbum.shortTitle}</p>
           <p>Vista privada para {user?.email}. No muestra contraseñas; Firebase no las expone.</p>
         </div>
         <button type="button" className="btn-refresh-matches" onClick={loadUsers}>
