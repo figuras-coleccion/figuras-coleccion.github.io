@@ -29,11 +29,11 @@ async function downloadLocalImage(src, filename) {
 export default function DonationModal({ onClose }) {
   const base = import.meta.env.BASE_URL || '/'
   const paypalQrSrc = `${base}paypal-donation-qr.png`
-  const yapeQrSrc = `${base}yape-donation-qr.png`
+  const yapeQrSrc = `${base}yape-donation-qr.jpg`
   const mercadoPagoLogoSrc = `${base}mercado-pago-donation.png`
 
   const handleDownloadYape = () => {
-    void downloadLocalImage(yapeQrSrc, 'QR-Yape-Figuras-Coleccion.png')
+    void downloadLocalImage(yapeQrSrc, 'QR-Donacion-YAPE.jpg')
   }
 
   return (
