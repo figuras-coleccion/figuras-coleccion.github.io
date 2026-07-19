@@ -63,9 +63,16 @@ export default function Layout() {
 
 
   useEffect(() => {
-    if (user?.showHowItWorksOnFirstLogin === true) {
-      setFirstRunHelpOpen(true)
+    if (!user?.id || user.showHowItWorksOnFirstLogin !== true) {
+      setFirstRunHelpOpen(false)
+      return undefined
     }
+
+    const timer = window.setTimeout(() => {
+      setFirstRunHelpOpen(true)
+    }, 180)
+
+    return () => window.clearTimeout(timer)
   }, [user?.id, user?.showHowItWorksOnFirstLogin])
 
   const handleFirstRunHelpClose = async () => {

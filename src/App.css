@@ -3256,3 +3256,6 @@ select:focus {
     font-weight: 800 !important;
   }
 }
+
+/* ========== Acceso unificado Google + correo ========== */
+.auth-single-screen{padding:18px}.google-access-note{margin:-2px 0 16px;color:var(--text-secondary);font-size:10px;line-height:1.45;text-align:center}.auth-register-divider{display:flex;align-items:center;gap:10px;margin:18px 0 10px;color:var(--text-secondary);font-size:10px;font-weight:800}.auth-register-divider::before,.auth-register-divider::after{content:'';height:1px;flex:1;background:var(--border)}.auth-register-email{margin-top:0}.email-register-card{background:rgba(15,15,35,.7);border:1px solid var(--border);border-radius:18px;padding:16px}.email-register-card h2{margin:0 0 8px;text-align:center;font-size:19px}.email-register-card .auth-section-title{margin-bottom:16px}

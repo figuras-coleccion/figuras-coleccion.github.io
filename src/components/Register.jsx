@@ -10,23 +10,19 @@ function getAuthErrorMessage(err) {
   }
 
   if (code.includes('auth/account-exists-with-different-credential')) {
-    return 'Ese correo ya existe con otro método de acceso. Intenta ingresar con correo y contraseña o con Google.'
-  }
-
-  if (code.includes('auth/google-account-not-registered')) {
-    return 'Esta cuenta de Google todavía no está registrada. Entra a Registro y crea tu cuenta con Google.'
+    return 'Ese correo ya existe con otro método de acceso. Intenta con Google o con correo y contraseña.'
   }
 
   if (code.includes('auth/popup-closed-by-user') || code.includes('auth/cancelled-popup-request')) {
-    return 'Se canceló el acceso con Google. Puedes intentar nuevamente o ingresar con correo y contraseña.'
+    return 'Se canceló el acceso con Google. Puedes intentarlo nuevamente.'
   }
 
   if (code.includes('auth/popup-blocked')) {
-    return 'El navegador bloqueó la ventana de Google. Permite ventanas emergentes e intenta nuevamente.'
+    return 'El navegador bloqueó la ventana de Google. Permite ventanas emergentes e inténtalo nuevamente.'
   }
 
   if (code.includes('auth/unauthorized-domain')) {
-    return 'Este dominio no está autorizado en Firebase Authentication. Agrega el dominio en Authorized domains.'
+    return 'Este dominio no está autorizado en Firebase Authentication.'
   }
 
   if (code.includes('auth/invalid-email')) {
@@ -63,8 +59,7 @@ export default function Register() {
     logout
   } = useUser()
 
-  const [mode, setMode] = useState('login')
-  const [registerMethod, setRegisterMethod] = useState('google')
+  const [screen, setScreen] = useState('login')
   const [name, setName] = useState('')
   const [surname, setSurname] = useState('')
   const [countryCode, setCountryCode] = useState(() => detectCountryCode())
@@ -86,60 +81,38 @@ export default function Register() {
     }
   }, [pendingProfile])
 
+  const resetMessages = () => {
+    setError('')
+    setInfo('')
+  }
+
   const validateRegister = () => {
-    if (!name.trim() || !surname.trim()) {
-      return 'Por favor completa nombre y apellido.'
-    }
-
-    if (!countryCode) {
-      return 'Selecciona tu país para habilitar matches por ubicación.'
-    }
-
-    if (!email.trim()) {
-      return 'Ingresa tu correo.'
-    }
-
-    if (password.length < 6) {
-      return 'La contraseña debe tener al menos 6 caracteres.'
-    }
-
-    if (password !== confirmPassword) {
-      return 'Las contraseñas no coinciden.'
-    }
-
+    if (!name.trim() || !surname.trim()) return 'Por favor completa nombre y apellido.'
+    if (!countryCode) return 'Selecciona tu país para habilitar matches por ubicación.'
+    if (!email.trim()) return 'Ingresa tu correo.'
+    if (password.length < 6) return 'La contraseña debe tener al menos 6 caracteres.'
+    if (password !== confirmPassword) return 'Las contraseñas no coinciden.'
     return ''
   }
 
   const validateProfile = () => {
-    if (!name.trim() || !surname.trim()) {
-      return 'Completa nombre y apellido para identificar tu álbum.'
-    }
-
-    if (!countryCode) {
-      return 'Selecciona tu país para habilitar matches por ubicación.'
-    }
-
+    if (!name.trim() || !surname.trim()) return 'Completa nombre y apellido para identificar tu álbum.'
+    if (!countryCode) return 'Selecciona tu país para habilitar matches por ubicación.'
     return ''
   }
 
-  const handleGoogleLogin = async (intent = 'login') => {
+  const handleGoogleAccess = async () => {
     const attemptId = Date.now()
     googleAttemptRef.current = attemptId
-    setError('')
-    setInfo('')
+    resetMessages()
     setSubmitting(true)
 
-    // En algunos navegadores, si el usuario cierra la ventana emergente de Google,
-    // Firebase puede tardar unos segundos en resolver el rechazo. Este respaldo evita
-    // que el formulario quede bloqueado y vuelve a habilitar todas las opciones.
     const safetyTimer = window.setTimeout(() => {
-      if (googleAttemptRef.current === attemptId) {
-        setSubmitting(false)
-      }
+      if (googleAttemptRef.current === attemptId) setSubmitting(false)
     }, 15000)
 
     try {
-      const result = await loginWithGoogle({ intent })
+      const result = await loginWithGoogle()
       if (result?.needsProfile) {
         setInfo('Acceso con Google correcto. Completa tus datos para entrar al álbum.')
       }
@@ -155,45 +128,22 @@ export default function Register() {
     }
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setInfo('')
+  const handleLogin = async (event) => {
+    event.preventDefault()
+    resetMessages()
 
-    if (mode === 'register') {
-      if (registerMethod === 'google') {
-        await handleGoogleLogin('register')
-        return
-      }
-
-      const validationError = validateRegister()
-      if (validationError) {
-        setError(validationError)
-        return
-      }
-    } else if (!email.trim() || !password) {
+    if (!email.trim() || !password) {
       setError('Ingresa tu correo y contraseña.')
       return
     }
 
     setSubmitting(true)
     try {
-      if (mode === 'register') {
-        await registerUser({
-          name,
-          surname,
-          email,
-          password,
-          countryCode
-        })
-        setInfo('Te enviamos un correo de verificación. Ábrelo y confirma tu cuenta.')
-      } else {
-        const result = await loginUser({ email, password })
-        if (result.needsVerification) {
-          setInfo('Tu correo aún no está verificado. Revisa tu bandeja de entrada.')
-        } else if (result.needsProfile) {
-          setInfo('Completa tus datos para entrar al álbum.')
-        }
+      const result = await loginUser({ email, password })
+      if (result?.needsVerification) {
+        setInfo('Tu correo aún no está verificado. Revisa tu bandeja de entrada.')
+      } else if (result?.needsProfile) {
+        setInfo('Completa tus datos para entrar al álbum.')
       }
     } catch (err) {
       setError(getAuthErrorMessage(err))
@@ -203,10 +153,31 @@ export default function Register() {
     }
   }
 
-  const handleCompleteProfile = async (e) => {
-    e.preventDefault()
-    setError('')
-    setInfo('')
+  const handleRegister = async (event) => {
+    event.preventDefault()
+    resetMessages()
+
+    const validationError = validateRegister()
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await registerUser({ name, surname, email, password, countryCode })
+      setInfo('Te enviamos un correo de verificación. Ábrelo y confirma tu cuenta.')
+    } catch (err) {
+      setError(getAuthErrorMessage(err))
+      console.error(err)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleCompleteProfile = async (event) => {
+    event.preventDefault()
+    resetMessages()
 
     const validationError = validateProfile()
     if (validationError) {
@@ -216,11 +187,7 @@ export default function Register() {
 
     setSubmitting(true)
     try {
-      await completeProfile({
-        name,
-        surname,
-        countryCode
-      })
+      await completeProfile({ name, surname, countryCode })
     } catch (err) {
       setError(getAuthErrorMessage(err))
       console.error(err)
@@ -230,13 +197,7 @@ export default function Register() {
   }
 
   const handleResetPassword = async () => {
-    setError('')
-    setInfo('')
-
-    if (!countryCode) {
-      return 'Selecciona tu país para habilitar matches por ubicación.'
-    }
-
+    resetMessages()
     if (!email.trim()) {
       setError('Escribe tu correo para enviarte el enlace de recuperación.')
       return
@@ -254,8 +215,7 @@ export default function Register() {
   }
 
   const handleResendVerification = async () => {
-    setError('')
-    setInfo('')
+    resetMessages()
     setSubmitting(true)
     try {
       await resendVerificationEmail()
@@ -268,8 +228,7 @@ export default function Register() {
   }
 
   const handleCheckVerification = async () => {
-    setError('')
-    setInfo('')
+    resetMessages()
     setSubmitting(true)
     try {
       const verified = await refreshEmailVerification()
@@ -284,11 +243,7 @@ export default function Register() {
   }
 
   if (loading) {
-    return (
-      <div className="register-page">
-        <div className="loading">Cargando...</div>
-      </div>
-    )
+    return <div className="register-page"><div className="loading">Cargando...</div></div>
   }
 
   if (pendingProfile) {
@@ -297,62 +252,15 @@ export default function Register() {
         <div className="register-card">
           <h1>👤 Completa tu perfil</h1>
           <p className="subtitle">Tu cuenta ya está validada. Solo falta completar estos datos para usar el álbum.</p>
-
           <form onSubmit={handleCompleteProfile}>
-            <div className="form-group">
-              <label>Nombre</label>
-              <input
-                type="text"
-                placeholder="Tu nombre"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoComplete="given-name"
-                autoFocus
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Apellido</label>
-              <input
-                type="text"
-                placeholder="Tu apellido"
-                value={surname}
-                onChange={(e) => setSurname(e.target.value)}
-                autoComplete="family-name"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>País</label>
-              <select value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
-                <option value="">Selecciona tu país</option>
-                {COUNTRIES.map(country => (
-                  <option key={country.code} value={country.code}>{country.name}</option>
-                ))}
-              </select>
-              <small className="field-hint">Usaremos tu país para mostrarte matches relevantes.</small>
-            </div>
-
+            <div className="form-group"><label>Nombre</label><input type="text" placeholder="Tu nombre" value={name} onChange={event => setName(event.target.value)} autoComplete="given-name" autoFocus /></div>
+            <div className="form-group"><label>Apellido</label><input type="text" placeholder="Tu apellido" value={surname} onChange={event => setSurname(event.target.value)} autoComplete="family-name" /></div>
+            <div className="form-group"><label>País</label><select value={countryCode} onChange={event => setCountryCode(event.target.value)}><option value="">Selecciona tu país</option>{COUNTRIES.map(country => <option key={country.code} value={country.code}>{country.name}</option>)}</select><small className="field-hint">Usaremos tu país para mostrarte matches relevantes.</small></div>
             {info && <p className="form-info">{info}</p>}
             {error && <p className="form-error">{error}</p>}
-
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={submitting}
-            >
-              {submitting ? 'Guardando...' : 'Guardar y entrar al álbum'}
-            </button>
+            <button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Guardando...' : 'Guardar y entrar al álbum'}</button>
           </form>
-
-          <button
-            type="button"
-            className="btn-link"
-            disabled={submitting}
-            onClick={logout}
-          >
-            Usar otra cuenta
-          </button>
+          <button type="button" className="btn-link" disabled={submitting} onClick={logout}>Usar otra cuenta</button>
         </div>
       </div>
     )
@@ -364,45 +272,13 @@ export default function Register() {
         <div className="register-card">
           <h1>📩 Verifica tu correo</h1>
           <p className="subtitle">Tu cuenta está creada, pero falta confirmar el email.</p>
-
-          <div className="auth-info-box">
-            Enviamos un enlace de verificación a:<br />
-            <strong>{pendingVerification.email}</strong>
-          </div>
-
+          <div className="auth-info-box">Enviamos un enlace de verificación a:<br /><strong>{pendingVerification.email}</strong></div>
           {info && <p className="form-info">{info}</p>}
           {error && <p className="form-error">{error}</p>}
-
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={submitting}
-            onClick={handleCheckVerification}
-          >
-            {submitting ? 'Verificando...' : 'Ya verifiqué mi correo'}
-          </button>
-
-          <button
-            type="button"
-            className="btn-secondary"
-            disabled={submitting}
-            onClick={handleResendVerification}
-          >
-            Reenviar correo de verificación
-          </button>
-
-          <button
-            type="button"
-            className="btn-link"
-            disabled={submitting}
-            onClick={logout}
-          >
-            Usar otro correo
-          </button>
-
-          <p className="auth-note">
-            Si no lo ves, revisa spam o promociones. El acceso al álbum se habilita recién cuando el correo esté verificado.
-          </p>
+          <button type="button" className="btn-primary" disabled={submitting} onClick={handleCheckVerification}>{submitting ? 'Verificando...' : 'Ya verifiqué mi correo'}</button>
+          <button type="button" className="btn-secondary" disabled={submitting} onClick={handleResendVerification}>Reenviar correo de verificación</button>
+          <button type="button" className="btn-link" disabled={submitting} onClick={logout}>Usar otro correo</button>
+          <p className="auth-note">Si no lo ves, revisa spam o promociones. El acceso al álbum se habilita cuando el correo esté verificado.</p>
         </div>
       </div>
     )
@@ -414,230 +290,48 @@ export default function Register() {
         <h1>⚽ Panini World Cup 2026 Sticker Tracker</h1>
         <p className="subtitle">World Cup Sticker Tracker</p>
 
-        <div className="auth-tabs">
-          <button
-            type="button"
-            className={mode === 'login' ? 'active' : ''}
-            onClick={() => {
-              setMode('login')
-              setError('')
-              setInfo('')
-            }}
-          >
-            Ingresar
-          </button>
-          <button
-            type="button"
-            className={mode === 'register' ? 'active' : ''}
-            onClick={() => {
-              setMode('register')
-              setRegisterMethod('google')
-              setError('')
-              setInfo('')
-            }}
-          >
-            Registro
-          </button>
-        </div>
-
-        {mode === 'register' && (
-          <div className="register-method-card">
-            <p className="auth-section-title">Elige cómo quieres crear tu cuenta</p>
-
-            <div className="register-method-tabs">
-              <button
-                type="button"
-                className={registerMethod === 'google' ? 'active' : ''}
-                onClick={() => {
-                  setRegisterMethod('google')
-                  setError('')
-                  setInfo('')
-                }}
-              >
-                Google
-              </button>
-              <button
-                type="button"
-                className={registerMethod === 'email' ? 'active' : ''}
-                onClick={() => {
-                  setRegisterMethod('email')
-                  setError('')
-                  setInfo('')
-                }}
-              >
-                Correo / contraseña
-              </button>
-            </div>
-
-            {registerMethod === 'google' ? (
-              <div className="google-register-box">
-                <button
-                  type="button"
-                  className="btn-google"
-                  disabled={submitting}
-                  onClick={() => handleGoogleLogin('register')}
-                >
-                  <span className="google-icon">G</span>
-                  {submitting ? 'Conectando...' : 'Registrarme con Google'}
-                </button>
-
-                {info && <p className="form-info">{info}</p>}
-                {error && <p className="form-error">{error}</p>}
-
-                <p className="auth-note">
-                  Usaremos el correo de tu cuenta Google. Si es tu primera vez, luego te pediremos nombre, apellido y país si hace falta completar tu perfil de intercambio.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label>Nombre</label>
-                  <input
-                    type="text"
-                    placeholder="Tu nombre"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    autoComplete="given-name"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Apellido</label>
-                  <input
-                    type="text"
-                    placeholder="Tu apellido"
-                    value={surname}
-                    onChange={(e) => setSurname(e.target.value)}
-                    autoComplete="family-name"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>País</label>
-                  <select value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
-                    <option value="">Selecciona tu país</option>
-                    {COUNTRIES.map(country => (
-                      <option key={country.code} value={country.code}>{country.name}</option>
-                    ))}
-                  </select>
-                  <small className="field-hint">Usaremos tu país para mostrarte matches relevantes.</small>
-                </div>
-
-                <div className="form-group">
-                  <label>Correo</label>
-                  <input
-                    type="email"
-                    placeholder="tu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Contraseña</label>
-                  <input
-                    type="password"
-                    placeholder="Mínimo 6 caracteres"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="new-password"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Confirmar contraseña</label>
-                  <input
-                    type="password"
-                    placeholder="Repite tu contraseña"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    autoComplete="new-password"
-                  />
-                </div>
-
-                {info && <p className="form-info">{info}</p>}
-                {error && <p className="form-error">{error}</p>}
-
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={submitting}
-                  style={{ marginTop: '8px' }}
-                >
-                  {submitting ? 'Procesando...' : 'Crear cuenta y verificar correo 🚀'}
-                </button>
-              </form>
-            )}
-          </div>
-        )}
-
-        {mode === 'login' && (
-          <div className="login-method-card">
-            <p className="auth-section-title">Elige cómo quieres ingresar</p>
-
-            <button
-              type="button"
-              className="btn-google"
-              disabled={submitting}
-              onClick={() => handleGoogleLogin('login')}
-            >
+        {screen === 'login' ? (
+          <div className="login-method-card auth-single-screen">
+            <button type="button" className="btn-google" disabled={submitting} onClick={handleGoogleAccess}>
               <span className="google-icon">G</span>
-              {submitting ? 'Conectando...' : 'Ingresar con Google'}
+              {submitting ? 'Conectando...' : 'Continuar con Google'}
             </button>
+            <p className="google-access-note">El mismo botón sirve para ingresar o crear tu cuenta con Google.</p>
 
-            <div className="auth-divider"><span>o ingresa con correo</span></div>
+            <div className="auth-divider"><span>o continúa con correo</span></div>
 
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label>Correo</label>
-                <input
-                  type="email"
-                  placeholder="tu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Contraseña</label>
-                <input
-                  type="password"
-                  placeholder="Mínimo 6 caracteres"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                />
-              </div>
-
+            <form onSubmit={handleLogin}>
+              <div className="form-group"><label>Correo</label><input type="email" placeholder="tu@email.com" value={email} onChange={event => setEmail(event.target.value)} autoComplete="email" /></div>
+              <div className="form-group"><label>Contraseña</label><input type="password" placeholder="Tu contraseña" value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" /></div>
               {info && <p className="form-info">{info}</p>}
               {error && <p className="form-error">{error}</p>}
-
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={submitting}
-                style={{ marginTop: '8px' }}
-              >
-                {submitting ? 'Procesando...' : 'Ingresar con correo'}
-              </button>
+              <button type="submit" className="btn-primary" disabled={submitting} style={{ marginTop: '8px' }}>{submitting ? 'Procesando...' : 'Ingresar con correo'}</button>
             </form>
 
-            <button
-              type="button"
-              className="btn-link"
-              disabled={submitting}
-              onClick={handleResetPassword}
-            >
-              Olvidé mi contraseña
-            </button>
+            <button type="button" className="btn-link" disabled={submitting} onClick={handleResetPassword}>Olvidé mi contraseña</button>
+            <div className="auth-register-divider"><span>¿Todavía no tienes cuenta?</span></div>
+            <button type="button" className="btn-secondary auth-register-email" disabled={submitting} onClick={() => { setScreen('register'); resetMessages() }}>Registrarme con correo</button>
+          </div>
+        ) : (
+          <div className="register-method-card email-register-card">
+            <h2>Crear cuenta con correo</h2>
+            <p className="auth-section-title">Completa tus datos y verifica tu correo para ingresar.</p>
+            <form onSubmit={handleRegister}>
+              <div className="form-group"><label>Nombre</label><input type="text" placeholder="Tu nombre" value={name} onChange={event => setName(event.target.value)} autoComplete="given-name" /></div>
+              <div className="form-group"><label>Apellido</label><input type="text" placeholder="Tu apellido" value={surname} onChange={event => setSurname(event.target.value)} autoComplete="family-name" /></div>
+              <div className="form-group"><label>País</label><select value={countryCode} onChange={event => setCountryCode(event.target.value)}><option value="">Selecciona tu país</option>{COUNTRIES.map(country => <option key={country.code} value={country.code}>{country.name}</option>)}</select><small className="field-hint">Usaremos tu país para mostrarte matches relevantes.</small></div>
+              <div className="form-group"><label>Correo</label><input type="email" placeholder="tu@email.com" value={email} onChange={event => setEmail(event.target.value)} autoComplete="email" /></div>
+              <div className="form-group"><label>Contraseña</label><input type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={event => setPassword(event.target.value)} autoComplete="new-password" /></div>
+              <div className="form-group"><label>Confirmar contraseña</label><input type="password" placeholder="Repite tu contraseña" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} autoComplete="new-password" /></div>
+              {info && <p className="form-info">{info}</p>}
+              {error && <p className="form-error">{error}</p>}
+              <button type="submit" className="btn-primary" disabled={submitting} style={{ marginTop: '8px' }}>{submitting ? 'Procesando...' : 'Crear cuenta y verificar correo 🚀'}</button>
+            </form>
+            <button type="button" className="btn-link" disabled={submitting} onClick={() => { setScreen('login'); resetMessages() }}>← Volver a ingresar</button>
           </div>
         )}
 
-        <p className="auth-note">
-          Cada usuario tiene su propio álbum. Tu avance queda guardado en la nube y separado por cuenta.
-        </p>
+        <p className="auth-note">Cada usuario tiene su propio álbum. Tu avance queda guardado en la nube y separado por cuenta.</p>
       </div>
     </div>
   )

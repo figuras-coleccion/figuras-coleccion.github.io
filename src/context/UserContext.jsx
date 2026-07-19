@@ -17,14 +17,14 @@ import {
   reload,
   getIdToken,
   signInWithPopup,
-  getAdditionalUserInfo,
-  deleteUser
+  getAdditionalUserInfo
 } from '../firebase'
 import { detectCountryCode, getCountryName } from '../data/countries'
 
 const UserContext = createContext()
 
-const ONBOARDING_RELEASE_AT = 1784438026000
+const ONBOARDING_VERSION = 1
+const ONBOARDING_RECOVERY_STARTED_AT = 1784438026000
 const FIRST_RUN_STORAGE_PREFIX = 'panini_how_it_works_pending_'
 
 function firstRunStorageKey(uid) {
@@ -98,15 +98,21 @@ function buildUserData(firebaseUser, profile = {}) {
   const fallback = splitDisplayName(firebaseUser?.displayName)
   const googleProfile = firebaseUser?.providerData?.find(item => item.providerId === 'google.com')
   const googlePhotoURL = googleProfile?.photoURL || firebaseUser?.photoURL || ''
-  const createdAt = Number(profile.createdAt) || Date.now()
+  const storedCreatedAt = Number(profile.createdAt || profile.onboardingInitializedAt) || 0
+  const createdAt = storedCreatedAt || Date.now()
   const howItWorksSeenAt = Number(profile.howItWorksSeenAt) || null
+  const onboardingVersion = Math.max(0, Number(profile.onboardingVersion) || 0)
+  const onboardingSeenVersion = Math.max(
+    0,
+    Number(profile.onboardingSeenVersion) || (howItWorksSeenAt ? ONBOARDING_VERSION : 0)
+  )
   const pendingFromFirebase = profile.showHowItWorksOnFirstLogin === true
   const pendingFromThisBrowser = hasLocalFirstRunPending(firebaseUser?.uid)
-  const recentAccountMissingFirstRunState = (
-    createdAt >= ONBOARDING_RELEASE_AT &&
+  const pendingFromVersion = onboardingVersion >= ONBOARDING_VERSION &&
+    onboardingSeenVersion < onboardingVersion
+  const recentAccountMissingOnboarding = storedCreatedAt >= ONBOARDING_RECOVERY_STARTED_AT &&
     !howItWorksSeenAt &&
-    profile.showHowItWorksOnFirstLogin !== false
-  )
+    onboardingSeenVersion < ONBOARDING_VERSION
 
   return {
     id: firebaseUser.uid,
@@ -122,7 +128,13 @@ function buildUserData(firebaseUser, profile = {}) {
     emailVerified: Boolean(firebaseUser.emailVerified),
     createdAt,
     verifiedAt: profile.verifiedAt || (firebaseUser.emailVerified ? Date.now() : null),
-    showHowItWorksOnFirstLogin: pendingFromFirebase || pendingFromThisBrowser || recentAccountMissingFirstRunState,
+    onboardingVersion,
+    onboardingSeenVersion,
+    showHowItWorksOnFirstLogin:
+      pendingFromFirebase ||
+      pendingFromThisBrowser ||
+      pendingFromVersion ||
+      recentAccountMissingOnboarding,
     howItWorksSeenAt,
     isAdmin: isAdminEmail(profile.email || firebaseUser.email)
   }
@@ -136,9 +148,18 @@ async function readProfile(firebaseUser) {
 async function loadProfile(firebaseUser) {
   const profile = await readProfile(firebaseUser)
   const userData = buildUserData(firebaseUser, profile)
+  const shouldInitializeOnboarding = userData.showHowItWorksOnFirstLogin === true &&
+    userData.onboardingSeenVersion < ONBOARDING_VERSION
 
   await update(ref(db, `users/${firebaseUser.uid}/profile`), {
     ...userData,
+    ...(shouldInitializeOnboarding
+      ? {
+          onboardingVersion: ONBOARDING_VERSION,
+          onboardingSeenVersion: userData.onboardingSeenVersion,
+          showHowItWorksOnFirstLogin: true
+        }
+      : {}),
     emailVerified: firebaseUser.emailVerified,
     lastLoginAt: Date.now()
   })
@@ -240,7 +261,10 @@ export function UserProvider({ children }) {
       emailVerified: false,
       createdAt: Date.now(),
       verifiedAt: null,
-      showHowItWorksOnFirstLogin: true
+      onboardingVersion: ONBOARDING_VERSION,
+      onboardingSeenVersion: 0,
+      showHowItWorksOnFirstLogin: true,
+      howItWorksSeenAt: null
     }
 
     await set(ref(db, `users/${fbUser.uid}/profile`), userData)
@@ -280,45 +304,24 @@ export function UserProvider({ children }) {
     return activateUserIfReady(freshUser)
   }, [activateUserIfReady])
 
-  const loginWithGoogle = useCallback(async ({ intent = 'login' } = {}) => {
+  const loginWithGoogle = useCallback(async () => {
     const credential = await signInWithPopup(auth, googleProvider)
     const additionalInfo = getAdditionalUserInfo(credential)
+    const profileSnapshot = await get(ref(db, `users/${credential.user.uid}/profile`))
+    const existingProfile = profileSnapshot.exists() ? profileSnapshot.val() : {}
+    const isNewPaniniAccount = additionalInfo?.isNewUser === true || !profileSnapshot.exists()
 
-    // En modo Ingresar no queremos crear cuentas silenciosamente.
-    // Si el correo de Google no existía todavía en Firebase, se elimina esa cuenta temporal
-    // y se muestra un mensaje claro para que el usuario vaya a Registro.
-    if (intent === 'login' && additionalInfo?.isNewUser) {
-      try {
-        await deleteUser(credential.user)
-      } catch (deleteError) {
-        console.warn('No se pudo eliminar el usuario Google temporal:', deleteError)
-        await signOut(auth)
-      }
-
-      const error = new Error('Esta cuenta de Google todavía no está registrada. Entra a Registro y crea tu cuenta con Google.')
-      error.code = 'auth/google-account-not-registered'
-      throw error
-    }
-
-    if (intent === 'register') {
-      const profileSnapshot = await get(ref(db, `users/${credential.user.uid}/profile`))
-      const existingProfile = profileSnapshot.exists() ? profileSnapshot.val() : {}
-      const isNewPaniniProfile = (
-        additionalInfo?.isNewUser === true ||
-        !profileSnapshot.exists() ||
-        !isProfileComplete(existingProfile)
-      )
-
-      if (isNewPaniniProfile) {
-        const now = Date.now()
-        markLocalFirstRunPending(credential.user.uid)
-        await update(ref(db, `users/${credential.user.uid}/profile`), {
-          showHowItWorksOnFirstLogin: true,
-          howItWorksSeenAt: null,
-          createdAt: Number(existingProfile.createdAt) || now,
-          onboardingInitializedAt: now
-        })
-      }
+    if (isNewPaniniAccount) {
+      const now = Date.now()
+      markLocalFirstRunPending(credential.user.uid)
+      await update(ref(db, `users/${credential.user.uid}/profile`), {
+        onboardingVersion: ONBOARDING_VERSION,
+        onboardingSeenVersion: 0,
+        showHowItWorksOnFirstLogin: true,
+        howItWorksSeenAt: null,
+        createdAt: Number(existingProfile.createdAt) || now,
+        onboardingInitializedAt: now
+      })
     }
 
     await reload(credential.user)
@@ -338,7 +341,15 @@ export function UserProvider({ children }) {
       displayName: `${cleanName} ${cleanSurname}`.trim()
     })
 
-    const keepFirstRunPending = hasLocalFirstRunPending(auth.currentUser.uid)
+    const existingProfile = await readProfile(auth.currentUser)
+    const keepFirstRunPending = (
+      hasLocalFirstRunPending(auth.currentUser.uid) ||
+      existingProfile.showHowItWorksOnFirstLogin === true ||
+      (
+        Number(existingProfile.onboardingVersion) >= ONBOARDING_VERSION &&
+        Number(existingProfile.onboardingSeenVersion || 0) < ONBOARDING_VERSION
+      )
+    )
 
     await update(ref(db, `users/${auth.currentUser.uid}/profile`), {
       name: cleanName,
@@ -353,7 +364,14 @@ export function UserProvider({ children }) {
       emailVerified: auth.currentUser.emailVerified,
       profileCompletedAt: Date.now(),
       lastLoginAt: Date.now(),
-      ...(keepFirstRunPending ? { showHowItWorksOnFirstLogin: true } : {})
+      ...(keepFirstRunPending
+        ? {
+            onboardingVersion: ONBOARDING_VERSION,
+            onboardingSeenVersion: 0,
+            showHowItWorksOnFirstLogin: true,
+            howItWorksSeenAt: null
+          }
+        : {})
     })
 
     const userData = await loadProfile(auth.currentUser)
@@ -467,6 +485,8 @@ export function UserProvider({ children }) {
     const seenAt = Date.now()
 
     await update(ref(db, `users/${uid}/profile`), {
+      onboardingVersion: ONBOARDING_VERSION,
+      onboardingSeenVersion: ONBOARDING_VERSION,
       showHowItWorksOnFirstLogin: false,
       howItWorksSeenAt: seenAt
     })
@@ -477,6 +497,8 @@ export function UserProvider({ children }) {
       if (!currentUser) return currentUser
       const nextUser = {
         ...currentUser,
+        onboardingVersion: ONBOARDING_VERSION,
+        onboardingSeenVersion: ONBOARDING_VERSION,
         showHowItWorksOnFirstLogin: false,
         howItWorksSeenAt: seenAt
       }

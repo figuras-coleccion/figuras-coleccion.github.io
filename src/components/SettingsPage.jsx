@@ -84,8 +84,8 @@ export default function SettingsPage() {
         <button type="button" onClick={() => setHelpOpen(true)}><span className="settings-menu-icon blue">?</span><span><strong>¿Cómo funciona?</strong><small>Aprende a usar el álbum y los trueques</small></span><i>›</i></button>
         <button type="button" onClick={() => navigate('/profile')}><span className="settings-menu-icon purple">👤</span><span><strong>Perfil</strong><small>Datos personales y foto de usuario</small></span><i>›</i></button>
         <button type="button" onClick={() => { setCompleteError(''); setCompleteOpen(true) }}><span className="settings-menu-icon amber">✓</span><span><strong>Marcar álbum como completo</strong><small>{missingCount > 0 ? `Marcar ${missingCount} figuritas faltantes como pegadas` : 'El álbum ya figura como completo'}</small></span><i>›</i></button>
-        <button type="button" className="settings-logout-option" onClick={handleLogout} disabled={loggingOut}><span className="settings-menu-icon red">↪</span><span><strong>{loggingOut ? 'Cerrando sesión…' : 'Salir'}</strong><small>Cerrar la sesión de esta cuenta</small></span><i>›</i></button>
         <button type="button" onClick={() => setDonationOpen(true)}><span className="settings-menu-icon donation">💙</span><span><strong>Realizar donación</strong><small>Mantener el servicio libre, sin publicidad y con nuevos álbumes</small></span><i>›</i></button>
+        <button type="button" className="settings-logout-option" onClick={handleLogout} disabled={loggingOut}><span className="settings-menu-icon red">↪</span><span><strong>{loggingOut ? 'Cerrando sesión…' : 'Salir'}</strong><small>Cerrar la sesión de esta cuenta</small></span><i>›</i></button>
       </section>
       <footer className="settings-page-footer">Creado por un padre para su hijo · © 2026 · Perú 🇵🇪</footer>
       {helpOpen ? <HowItWorksModal onClose={() => setHelpOpen(false)} /> : null}
