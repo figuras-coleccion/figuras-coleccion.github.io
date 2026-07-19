@@ -24,6 +24,40 @@ import { detectCountryCode, getCountryName } from '../data/countries'
 
 const UserContext = createContext()
 
+const ONBOARDING_RELEASE_AT = 1784438026000
+const FIRST_RUN_STORAGE_PREFIX = 'panini_how_it_works_pending_'
+
+function firstRunStorageKey(uid) {
+  return `${FIRST_RUN_STORAGE_PREFIX}${uid}`
+}
+
+function hasLocalFirstRunPending(uid) {
+  if (!uid) return false
+  try {
+    return localStorage.getItem(firstRunStorageKey(uid)) === '1'
+  } catch {
+    return false
+  }
+}
+
+function markLocalFirstRunPending(uid) {
+  if (!uid) return
+  try {
+    localStorage.setItem(firstRunStorageKey(uid), '1')
+  } catch {
+    // Firebase remains the source of truth if local storage is unavailable.
+  }
+}
+
+function clearLocalFirstRunPending(uid) {
+  if (!uid) return
+  try {
+    localStorage.removeItem(firstRunStorageKey(uid))
+  } catch {
+    // Nothing else is required.
+  }
+}
+
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || 'elipark@gmail.com,neudud@gmail.com')
   .split(',')
   .map(item => item.trim().toLowerCase())
@@ -64,6 +98,15 @@ function buildUserData(firebaseUser, profile = {}) {
   const fallback = splitDisplayName(firebaseUser?.displayName)
   const googleProfile = firebaseUser?.providerData?.find(item => item.providerId === 'google.com')
   const googlePhotoURL = googleProfile?.photoURL || firebaseUser?.photoURL || ''
+  const createdAt = Number(profile.createdAt) || Date.now()
+  const howItWorksSeenAt = Number(profile.howItWorksSeenAt) || null
+  const pendingFromFirebase = profile.showHowItWorksOnFirstLogin === true
+  const pendingFromThisBrowser = hasLocalFirstRunPending(firebaseUser?.uid)
+  const recentAccountMissingFirstRunState = (
+    createdAt >= ONBOARDING_RELEASE_AT &&
+    !howItWorksSeenAt &&
+    profile.showHowItWorksOnFirstLogin !== false
+  )
 
   return {
     id: firebaseUser.uid,
@@ -77,10 +120,10 @@ function buildUserData(firebaseUser, profile = {}) {
     photoSource: profile.photoSource || (profile.photoURL ? 'profile' : (googlePhotoURL ? 'google' : 'none')),
     provider: profile.provider || firebaseUser.providerData?.[0]?.providerId || 'password',
     emailVerified: Boolean(firebaseUser.emailVerified),
-    createdAt: profile.createdAt || Date.now(),
+    createdAt,
     verifiedAt: profile.verifiedAt || (firebaseUser.emailVerified ? Date.now() : null),
-    showHowItWorksOnFirstLogin: profile.showHowItWorksOnFirstLogin === true,
-    howItWorksSeenAt: profile.howItWorksSeenAt || null,
+    showHowItWorksOnFirstLogin: pendingFromFirebase || pendingFromThisBrowser || recentAccountMissingFirstRunState,
+    howItWorksSeenAt,
     isAdmin: isAdminEmail(profile.email || firebaseUser.email)
   }
 }
@@ -201,6 +244,7 @@ export function UserProvider({ children }) {
     }
 
     await set(ref(db, `users/${fbUser.uid}/profile`), userData)
+    markLocalFirstRunPending(fbUser.uid)
 
     await sendEmailVerification(fbUser, {
       url: getAppUrl(),
@@ -256,11 +300,25 @@ export function UserProvider({ children }) {
       throw error
     }
 
-    if (intent === 'register' && additionalInfo?.isNewUser) {
-      await update(ref(db, `users/${credential.user.uid}/profile`), {
-        showHowItWorksOnFirstLogin: true,
-        createdAt: Date.now()
-      })
+    if (intent === 'register') {
+      const profileSnapshot = await get(ref(db, `users/${credential.user.uid}/profile`))
+      const existingProfile = profileSnapshot.exists() ? profileSnapshot.val() : {}
+      const isNewPaniniProfile = (
+        additionalInfo?.isNewUser === true ||
+        !profileSnapshot.exists() ||
+        !isProfileComplete(existingProfile)
+      )
+
+      if (isNewPaniniProfile) {
+        const now = Date.now()
+        markLocalFirstRunPending(credential.user.uid)
+        await update(ref(db, `users/${credential.user.uid}/profile`), {
+          showHowItWorksOnFirstLogin: true,
+          howItWorksSeenAt: null,
+          createdAt: Number(existingProfile.createdAt) || now,
+          onboardingInitializedAt: now
+        })
+      }
     }
 
     await reload(credential.user)
@@ -280,6 +338,8 @@ export function UserProvider({ children }) {
       displayName: `${cleanName} ${cleanSurname}`.trim()
     })
 
+    const keepFirstRunPending = hasLocalFirstRunPending(auth.currentUser.uid)
+
     await update(ref(db, `users/${auth.currentUser.uid}/profile`), {
       name: cleanName,
       surname: cleanSurname,
@@ -292,7 +352,8 @@ export function UserProvider({ children }) {
       provider: auth.currentUser.providerData?.[0]?.providerId || 'google.com',
       emailVerified: auth.currentUser.emailVerified,
       profileCompletedAt: Date.now(),
-      lastLoginAt: Date.now()
+      lastLoginAt: Date.now(),
+      ...(keepFirstRunPending ? { showHowItWorksOnFirstLogin: true } : {})
     })
 
     const userData = await loadProfile(auth.currentUser)
@@ -402,7 +463,15 @@ export function UserProvider({ children }) {
   const markHowItWorksAsSeen = useCallback(async () => {
     if (!auth.currentUser) return
 
+    const uid = auth.currentUser.uid
     const seenAt = Date.now()
+
+    await update(ref(db, `users/${uid}/profile`), {
+      showHowItWorksOnFirstLogin: false,
+      howItWorksSeenAt: seenAt
+    })
+
+    clearLocalFirstRunPending(uid)
 
     setUser(currentUser => {
       if (!currentUser) return currentUser
@@ -413,11 +482,6 @@ export function UserProvider({ children }) {
       }
       localStorage.setItem('panini_user', JSON.stringify(nextUser))
       return nextUser
-    })
-
-    await update(ref(db, `users/${auth.currentUser.uid}/profile`), {
-      showHowItWorksOnFirstLogin: false,
-      howItWorksSeenAt: seenAt
     })
   }, [])
 
