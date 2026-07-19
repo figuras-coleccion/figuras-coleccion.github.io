@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useStickers } from '../context/StickersContext'
+import { useAlbum } from '../context/AlbumContext'
+import { DEFAULT_ALBUM_ID } from '../albums/constants'
 import { buildAlbumGroups, getAlbumGroupIdFromLegacyPage } from '../data/albumGroups'
 import { normalizeSearchText } from '../data/stickersData'
 import StickerGrid from './StickerGrid'
@@ -32,6 +34,7 @@ export default function AlbumPage() {
     pendingChanges,
     updateStickerLocal
   } = useStickers()
+  const { activeAlbum } = useAlbum()
 
   const groups = useMemo(() => buildAlbumGroups(), [])
   const [query, setQuery] = useState((searchParams.get('q') || '').toUpperCase())
@@ -94,7 +97,7 @@ export default function AlbumPage() {
     <div className="album-v2-page">
       <header className="album-v2-header">
         <div>
-          <h2>Mi álbum</h2>
+          <h2>{activeAlbum.id === DEFAULT_ALBUM_ID ? 'Mi álbum' : activeAlbum.shortTitle}</h2>
         </div>
       </header>
 

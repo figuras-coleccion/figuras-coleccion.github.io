@@ -2,58 +2,9 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStickers } from '../context/StickersContext'
 import { useUser } from '../context/UserContext'
-import { specials, teams, teamNames, getTeamStickerCount } from '../data/stickersData'
-
-const flagCodeByTeam = {
-  MEX: 'mx',
-  RSA: 'za',
-  KOR: 'kr',
-  CZE: 'cz',
-  CAN: 'ca',
-  BIH: 'ba',
-  QAT: 'qa',
-  SUI: 'ch',
-  BRA: 'br',
-  MAR: 'ma',
-  HAI: 'ht',
-  SCO: 'gb-sct',
-  USA: 'us',
-  PAR: 'py',
-  AUS: 'au',
-  TUR: 'tr',
-  GER: 'de',
-  CUW: 'cw',
-  CIV: 'ci',
-  ECU: 'ec',
-  NED: 'nl',
-  JPN: 'jp',
-  SWE: 'se',
-  TUN: 'tn',
-  BEL: 'be',
-  EGY: 'eg',
-  IRN: 'ir',
-  NZL: 'nz',
-  ESP: 'es',
-  CPV: 'cv',
-  KSA: 'sa',
-  URU: 'uy',
-  FRA: 'fr',
-  SEN: 'sn',
-  IRQ: 'iq',
-  NOR: 'no',
-  ARG: 'ar',
-  ALG: 'dz',
-  AUT: 'at',
-  JOR: 'jo',
-  POR: 'pt',
-  COD: 'cd',
-  UZB: 'uz',
-  COL: 'co',
-  ENG: 'gb-eng',
-  CRO: 'hr',
-  GHA: 'gh',
-  PAN: 'pa'
-}
+import { useAlbum } from '../context/AlbumContext'
+import { buildAlbumGroups, getStickerDisplayNumber } from '../data/albumGroups'
+import { DEFAULT_ALBUM_ID } from '../albums/constants'
 
 function normalizeStickerState(state) {
   return {
@@ -62,66 +13,69 @@ function normalizeStickerState(state) {
   }
 }
 
-function buildLabelMeta(team) {
-  if (!team) {
-    return {
-      type: 'brand',
-      brand: 'fifa',
-      text: 'FIFA',
-      code: 'FWC'
-    }
+function buildLabelMeta(group, part, totalParts) {
+  const suffix = totalParts > 1 ? ` ${part + 1}` : ''
+  if (group.flagCode) {
+    return { type: 'flag', flagCode: group.flagCode, code: `${group.shortCode}${suffix}` }
   }
-
-  if (team === 'CC') {
-    return {
-      type: 'brand',
-      brand: 'coca-cola',
-      text: 'Coca‑Cola',
-      code: 'CC'
-    }
-  }
-
   return {
-    type: 'flag',
-    flagCode: flagCodeByTeam[team],
-    code: team
+    type: 'brand',
+    brand: group.type === 'collection' ? 'coca-cola' : 'fifa',
+    text: group.type === 'collection' ? 'Coca-Cola' : group.id === 'fwc-specials' ? 'FIFA' : group.shortCode,
+    code: `${group.shortCode}${suffix}`
   }
 }
 
-function buildTeamRow(team) {
-  const count = getTeamStickerCount(team)
-  const fullName = teamNames[team] || team
+function chunks(values, size = 20) {
+  const result = []
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size))
+  }
+  return result
+}
 
-  return {
-    id: team,
-    labelMeta: buildLabelMeta(team),
-    fullName,
-    cells: Array.from({ length: count }, (_, index) => ({
-      code: `${team}${index + 1}`,
-      number: String(index + 1)
+function buildVisualRows(orderMode = 'album', albumId = DEFAULT_ALBUM_ID) {
+  const groups = buildAlbumGroups()
+  if (albumId === DEFAULT_ALBUM_ID) {
+    const leadingGroups = groups.filter(group => group.placement === 'leading')
+    const countryGroups = groups.filter(group => group.placement === 'country')
+    const trailingGroups = groups.filter(group => group.placement === 'trailing')
+    const orderedCountries = orderMode === 'alphabetical'
+      ? [...countryGroups].sort((a, b) => a.shortCode.localeCompare(b.shortCode))
+      : countryGroups
+    const specials = {
+      id: 'fwc-specials',
+      title: 'FIFA World Cup Specials',
+      shortCode: 'FWC',
+      type: 'special',
+      codes: leadingGroups.flatMap(group => group.codes)
+    }
+
+    return [specials, ...orderedCountries, ...trailingGroups].map(group => ({
+      id: group.id,
+      labelMeta: buildLabelMeta(group, 0, 1),
+      fullName: group.title,
+      cells: group.codes.map(code => ({ code, number: getStickerDisplayNumber(code) }))
     }))
   }
-}
 
-function buildVisualRows(orderMode = 'album') {
-  const countryTeams = teams.filter(team => team !== 'CC')
-  const orderedTeams = orderMode === 'alphabetical'
-    ? [...countryTeams].sort((a, b) => a.localeCompare(b))
-    : countryTeams
+  const orderedGroups = orderMode === 'alphabetical'
+    ? [
+        ...groups.filter(group => group.placement === 'leading'),
+        ...groups.filter(group => group.placement === 'country').sort((a, b) => a.shortCode.localeCompare(b.shortCode)),
+        ...groups.filter(group => group.placement === 'trailing')
+      ]
+    : groups
 
-  return [
-    {
-      id: 'fwc-specials',
-      labelMeta: buildLabelMeta(null),
-      fullName: 'FIFA World Cup Specials',
-      cells: specials.map(code => ({
-        code,
-        number: code === '00' ? '00' : code.replace('FWC', '')
-      }))
-    },
-    ...orderedTeams.map(buildTeamRow),
-    buildTeamRow('CC')
-  ]
+  return orderedGroups.flatMap(group => {
+    const parts = chunks(group.codes)
+    return parts.map((codes, part) => ({
+      id: `${group.id}-${part}`,
+      labelMeta: buildLabelMeta(group, part, parts.length),
+      fullName: group.title,
+      cells: codes.map(code => ({ code, number: getStickerDisplayNumber(code) }))
+    }))
+  })
 }
 
 function VisualRowLabel({ meta, fullName }) {
@@ -151,10 +105,11 @@ export default function VisualMissingReportPage() {
   const navigate = useNavigate()
   const { user } = useUser()
   const { savedStickers } = useStickers()
+  const { activeAlbum } = useAlbum()
   const [orderMode, setOrderMode] = useState('album')
 
   const rows = useMemo(() => {
-    return buildVisualRows(orderMode).map(row => {
+    return buildVisualRows(orderMode, activeAlbum.id).map(row => {
       const cells = row.cells.map(cell => {
         const state = normalizeStickerState(savedStickers[cell.code])
         return {
@@ -174,7 +129,7 @@ export default function VisualMissingReportPage() {
         missing
       }
     })
-  }, [orderMode, savedStickers])
+  }, [activeAlbum.id, orderMode, savedStickers])
 
   return (
     <div className="visual-report-page">

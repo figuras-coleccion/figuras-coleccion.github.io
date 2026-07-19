@@ -3,10 +3,19 @@ import { onValue } from 'firebase/database'
 import { auth, db, ref } from './firebase'
 import { formatCodes, formatQuantities, showQrOverlay } from './qr-trade-ui'
 import { resolveQrHost } from './qr-host-resolve'
+import { DEFAULT_ALBUM_ID } from './albums/constants'
+import { getStoredActiveAlbumId } from './albums/runtime'
 
 let currentUid = ''
 let off = null
 let visibleId = ''
+
+function belongsToActiveAlbum(session = {}) {
+  const activeAlbumId = getStoredActiveAlbumId()
+  return session.albumId
+    ? session.albumId === activeAlbumId
+    : activeAlbumId === DEFAULT_ALBUM_ID
+}
 
 function showRequest(session) {
   if (!session || session.id === visibleId) return
@@ -43,7 +52,7 @@ function subscribe(uid) {
   if (!currentUid) return
   off = onValue(ref(db, `qrTradeRequests/${currentUid}`), snapshot => {
     const pending = Object.values(snapshot.val() || {})
-      .filter(item => item?.status === 'pending' && (!item.expiresAt || item.expiresAt > Date.now()))
+      .filter(item => item?.status === 'pending' && belongsToActiveAlbum(item) && (!item.expiresAt || item.expiresAt > Date.now()))
       .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
     if (pending[0]) showRequest(pending[0])
   }, error => {

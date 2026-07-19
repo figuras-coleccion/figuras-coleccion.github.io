@@ -2,10 +2,16 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStickers } from '../context/StickersContext'
 import { useUser } from '../context/UserContext'
-import { getAllStickers, getPageFromCode, teamNames } from '../data/stickersData'
+import { useAlbum } from '../context/AlbumContext'
+import { activeAlbumCatalog, getAllStickers, getPageFromCode, teamNames } from '../data/stickersData'
+
+const groupNamesById = Object.fromEntries(
+  activeAlbumCatalog.albumGroups.map(group => [group.id, group.title])
+)
 
 function getGroupLabel(code) {
   const page = getPageFromCode(code)
+  if (page.groupId && groupNamesById[page.groupId]) return groupNamesById[page.groupId]
   if (page.type === 'team' || page.type === 'collection') return teamNames[page.team] || page.team
   if (page.type === 'special') return 'Especiales FWC'
   if (page.type === 'logo') return 'Logo Panini'
@@ -57,6 +63,7 @@ function ReportSection({ title, subtitle, emptyText, groups, renderItem, classNa
 export default function TradeReportPage() {
   const navigate = useNavigate()
   const { user } = useUser()
+  const { activeAlbum } = useAlbum()
   const { savedStickers, getMissingStickers, getStats } = useStickers()
 
   const allStickers = useMemo(() => getAllStickers(), [])
@@ -100,7 +107,7 @@ export default function TradeReportPage() {
         <header className="trade-report-header">
           <div>
             <h1>Reporte para trueque</h1>
-            <p>Álbum Panini FIFA World Cup 2026</p>
+            <p>{activeAlbum.title}</p>
           </div>
           <div className="trade-report-meta">
             <strong>{user?.name} {user?.surname}</strong>

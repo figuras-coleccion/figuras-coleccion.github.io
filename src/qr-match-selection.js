@@ -1,4 +1,5 @@
 import { auth, db, ref, get, update } from './firebase'
+import { getAlbumChildPath, getStoredActiveAlbumId } from './albums/runtime'
 
 const state = {
   partnerId: '',
@@ -302,7 +303,8 @@ async function confirmTrade() {
   updateConfirmButton()
 
   try {
-    const snapshot = await get(ref(db, `users/${currentUser.uid}/stickers`))
+    const stickersPath = getAlbumChildPath(currentUser.uid, 'stickers', getStoredActiveAlbumId())
+    const snapshot = await get(ref(db, stickersPath))
     const current = snapshot.exists() ? snapshot.val() || {} : {}
     const changes = {}
     let received = 0
@@ -311,7 +313,7 @@ async function confirmTrade() {
     state.receive.forEach(code => {
       const item = current[code] || { owned: false, duplicates: 0 }
       if (item.owned) return
-      changes[`users/${currentUser.uid}/stickers/${code}`] = {
+      changes[`${stickersPath}/${code}`] = {
         owned: true,
         duplicates: Math.max(0, Number(item.duplicates) || 0)
       }
@@ -324,7 +326,7 @@ async function confirmTrade() {
       const quantity = Math.min(available, Math.max(0, Number(requested) || 0))
       if (!item.owned || quantity <= 0) return
 
-      changes[`users/${currentUser.uid}/stickers/${code}`] = {
+      changes[`${stickersPath}/${code}`] = {
         owned: true,
         duplicates: available - quantity
       }

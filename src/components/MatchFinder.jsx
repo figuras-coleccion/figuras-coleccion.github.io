@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../context/UserContext'
 import { useStickers } from '../context/StickersContext'
+import { useAlbum } from '../context/AlbumContext'
 import { db, ref, get } from '../firebase'
 import { allStickersOrdered } from '../data/stickersData'
 import { getCountryName } from '../data/countries'
+import { getAlbumStickersFromUser, isProfileUsingAlbum } from '../albums/runtime'
 
 const ORDER_INDEX = new Map(allStickersOrdered.map((code, index) => [code, index]))
 
@@ -35,6 +37,7 @@ export default function MatchFinder() {
   const navigate = useNavigate()
   const { user } = useUser()
   const { getDuplicates, getMissingStickers } = useStickers()
+  const { activeAlbumId, activeAlbum } = useAlbum()
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedMatchId, setSelectedMatchId] = useState(null)
@@ -53,7 +56,7 @@ export default function MatchFinder() {
     }
     loadAllUsers()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, user?.countryCode])
+  }, [activeAlbumId, user?.id, user?.countryCode])
 
   const loadAllUsers = async () => {
     setLoading(true)
@@ -68,11 +71,16 @@ export default function MatchFinder() {
       const usersData = snapshot.val()
       const usersList = Object.keys(usersData)
         .filter(uid => uid !== user.id)
-        .map(uid => ({
-          id: uid,
-          ...(usersData[uid].profile || {}),
-          stickers: usersData[uid].stickers || {}
-        }))
+        .map(uid => {
+          const record = usersData[uid] || {}
+          const profile = record.profile || {}
+          return {
+            id: uid,
+            ...profile,
+            stickers: getAlbumStickersFromUser(record, activeAlbumId)
+          }
+        })
+        .filter(otherUser => isProfileUsingAlbum(otherUser, activeAlbumId))
         .filter(otherUser => otherUser.emailVerified !== false && otherUser.email)
         .filter(otherUser => otherUser.countryCode === user.countryCode)
 
@@ -119,12 +127,12 @@ export default function MatchFinder() {
     const theirName = `${match.user.name || ''} ${match.user.surname || ''}`.trim() || 'amigo'
     const myName = `${user.name || ''} ${user.surname || ''}`.trim() || 'un coleccionista'
 
-    return `Hola ${theirName},\n\nUn gusto, soy ${myName}. Vi que tenemos varias figuras del álbum Panini para intercambiar.\n\nYo tengo repetidas para ofrecerte:\n${match.myOffer.join(', ')}\n\nY me gustaría intercambiar por estas figuras que tú tienes repetidas:\n${match.myRequest.join(', ')}\n\nPodemos coordinar por este correo si te parece bien.\n\nSaludos.`
+    return `Hola ${theirName},\n\nUn gusto, soy ${myName}. Vi que tenemos varias figuras de ${activeAlbum.shortTitle} para intercambiar.\n\nYo tengo repetidas para ofrecerte:\n${match.myOffer.join(', ')}\n\nY me gustaría intercambiar por estas figuras que tú tienes repetidas:\n${match.myRequest.join(', ')}\n\nPodemos coordinar por este correo si te parece bien.\n\nSaludos.`
   }
 
   const openEmailInvite = (match) => {
     if (!match.user.email) return
-    const subject = 'Invitación para intercambiar figuritas Panini 2026'
+    const subject = `Invitación para intercambiar figuritas - ${activeAlbum.shortTitle}`
     const body = generateEmailBody(match)
     window.location.href = buildMailtoUrl({ to: match.user.email, subject, body })
   }

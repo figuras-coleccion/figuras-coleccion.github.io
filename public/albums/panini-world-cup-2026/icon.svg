@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bgGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#19635F"/>
+      <stop offset="50%" stop-color="#0E3D40"/>
+      <stop offset="100%" stop-color="#071D28"/>
+    </linearGradient>
+
+    <!-- Metallic Gold Gradients -->
+    <linearGradient id="goldOuter" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8B6914"/>
+      <stop offset="25%" stop-color="#F2D172"/>
+      <stop offset="50%" stop-color="#B88A22"/>
+      <stop offset="75%" stop-color="#F9E090"/>
+      <stop offset="100%" stop-color="#6E500A"/>
+    </linearGradient>
+
+    <linearGradient id="goldTrophy" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE79A"/>
+      <stop offset="30%" stop-color="#DCA838"/>
+      <stop offset="60%" stop-color="#9C721A"/>
+      <stop offset="100%" stop-color="#5C420D"/>
+    </linearGradient>
+
+    <linearGradient id="goldHighlight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFF3C7"/>
+      <stop offset="50%" stop-color="#EBB94B"/>
+      <stop offset="100%" stop-color="#A57A1E"/>
+    </linearGradient>
+
+    <!-- Teal Gradients for 20 and Globe -->
+    <linearGradient id="tealBright" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#55F3CF"/>
+      <stop offset="40%" stop-color="#21B4B6"/>
+      <stop offset="80%" stop-color="#0C6578"/>
+      <stop offset="100%" stop-color="#053047"/>
+    </linearGradient>
+    
+    <linearGradient id="tealDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#148F96"/>
+      <stop offset="100%" stop-color="#05344D"/>
+    </linearGradient>
+
+    <!-- Shadows and Glows -->
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#000" flood-opacity="0.65"/>
+    </filter>
+  </defs>
+
+  <!-- === BACKGROUND RINGS === -->
+  <!-- Thick Gold Outer Edge -->
+  <circle cx="500" cy="500" r="480" fill="url(#goldOuter)" filter="url(#shadow)"/>
+  <!-- Dark Separator -->
+  <circle cx="500" cy="500" r="445" fill="#061B24"/>
+  <!-- Inner Gold Ring -->
+  <circle cx="500" cy="500" r="435" fill="url(#goldOuter)"/>
+  <!-- Main Deep Teal Background -->
+  <circle cx="500" cy="500" r="420" fill="url(#bgGlow)"/>
+
+  <!-- === ART DECO WINGS (Background Patterns) === -->
+  <g fill="none" stroke-width="12" opacity="0.8">
+    <!-- Left Wings (Teal/Gold accents) -->
+    <!-- Wing 1 -->
+    <path d="M 120,400 Q 180,250 300,160 L 400,300 Z" fill="#135A5E" stroke="url(#goldOuter)"/>
+    <!-- Wing 2 -->
+    <path d="M 100,500 Q 150,350 250,220 L 400,350 Z" fill="#0C4147" stroke="url(#goldOuter)"/>
+    <!-- Wing 3 -->
+    <path d="M 120,600 Q 180,480 300,380 L 450,450 Z" fill="#09313A" stroke="url(#goldOuter)"/>
+
+    <!-- Right Wings (Gold accents) -->
+    <!-- Wing 1 -->
+    <path d="M 880,400 Q 820,250 700,160 L 600,300 Z" fill="#8B6914" stroke="url(#goldOuter)"/>
+    <!-- Wing 2 -->
+    <path d="M 900,500 Q 850,350 750,220 L 600,350 Z" fill="#6E500A" stroke="url(#goldOuter)"/>
+    <!-- Wing 3 -->
+    <path d="M 880,600 Q 820,480 700,380 L 550,450 Z" fill="#4B3606" stroke="url(#goldOuter)"/>
+  </g>
+
+  <!-- Circular background accents -->
+  <circle cx="500" cy="500" r="350" fill="none" stroke="url(#goldOuter)" stroke-width="3" opacity="0.4"/>
+  <circle cx="500" cy="500" r="250" fill="none" stroke="#21B4B6" stroke-width="2" opacity="0.2"/>
+
+  <!-- === NUMBERS "2026" === -->
+  <g filter="url(#shadow)" font-family="'Montserrat', 'Impact', sans-serif" font-size="340" font-weight="900" letter-spacing="-15">
+    
+    <!-- "20" (Left Side - Teal) -->
+    <g transform="translate(90, 620)">
+      <!-- Main body -->
+      <text x="0" y="0" fill="url(#tealBright)">20</text>
+      <!-- Bevel effect -->
+      <text x="-4" y="-4" fill="none" stroke="#9BFFF2" stroke-width="4" opacity="0.8">20</text>
+      <text x="6" y="6" fill="none" stroke="#04202B" stroke-width="8" opacity="0.6">20</text>
+      
+      <!-- Geometric cut lines over the "20" -->
+      <clipPath id="facet20">
+        <polygon points="0,-300 200,-300 100,50 0,50"/>
+      </clipPath>
+      <text x="0" y="0" fill="#75FCE1" clip-path="url(#facet20)" opacity="0.4">20</text>
+    </g>
+
+    <!-- "26" (Right Side - Gold) -->
+    <g transform="translate(540, 620)">
+      <!-- Main body -->
+      <text x="0" y="0" fill="url(#goldOuter)">26</text>
+      <!-- Bevel effect -->
+      <text x="-4" y="-4" fill="none" stroke="#FFF0B3" stroke-width="4" opacity="0.8">26</text>
+      <text x="6" y="6" fill="none" stroke="#3A2703" stroke-width="8" opacity="0.6">26</text>
+      
+      <!-- Geometric cut lines -->
+      <clipPath id="facet26">
+        <polygon points="100,-300 400,-300 400,0 200,50"/>
+      </clipPath>
+      <text x="0" y="0" fill="#FFEFB5" clip-path="url(#facet26)" opacity="0.4">26</text>
+    </g>
+  </g>
+
+  <!-- === TROPHY === -->
+  <g filter="url(#shadow)">
+    
+    <!-- Base -->
+    <polygon points="350,820 650,820 610,700 390,700" fill="url(#goldOuter)"/>
+    <!-- Base Stripes (Teal and Gold) -->
+    <polygon points="365,795 635,795 625,765 375,765" fill="#0B3E45"/>
+    <polygon points="380,750 620,750 610,725 390,725" fill="#0B3E45"/>
+    
+    <!-- Base Facets -->
+    <polygon points="350,820 500,820 500,700 390,700" fill="url(#goldHighlight)" opacity="0.3"/>
+    <polygon points="500,820 650,820 610,700 500,700" fill="#000" opacity="0.2"/>
+
+    <!-- Main Stem -->
+    <polygon points="390,700 610,700 530,480 470,480" fill="url(#goldTrophy)"/>
+    <polygon points="390,700 500,700 500,480 470,480" fill="url(#goldHighlight)"/>
+    <polygon points="500,700 610,700 530,480 500,480" fill="#6E500A"/>
+
+    <!-- Left Trophy Arm / Wing -->
+    <path d="M 470,480 C 320,330 400,160 450,140 C 470,220 420,350 500,480 Z" fill="url(#goldHighlight)"/>
+    <path d="M 470,480 C 370,360 420,220 450,140 C 460,200 440,300 500,480 Z" fill="url(#goldTrophy)"/>
+
+    <!-- Right Trophy Arm / Wing -->
+    <path d="M 530,480 C 680,330 600,160 550,140 C 530,220 580,350 500,480 Z" fill="#A87A1E"/>
+    <path d="M 530,480 C 630,360 580,220 550,140 C 540,200 560,300 500,480 Z" fill="#5C420D"/>
+
+    <!-- Center Body -->
+    <path d="M 500,480 L 460,300 L 520,200 L 480,140 L 500,160 Z" fill="url(#goldHighlight)"/>
+    <path d="M 500,480 L 540,300 L 480,200 L 520,140 L 500,160 Z" fill="#6E500A"/>
+    
+    <polygon points="500,480 485,320 500,260" fill="#FFF3C7"/>
+    <polygon points="500,480 515,320 500,260" fill="#4B3606"/>
+
+    <!-- The Globe / World Map Facets -->
+    <g transform="translate(500, 210)">
+      <circle cx="0" cy="0" r="115" fill="url(#tealBright)"/>
+      
+      <!-- Geometric low-poly map facets -->
+      <polygon points="-80,-40 10,-90 60,-15 -20,60" fill="#2ED1C6"/>
+      <polygon points="10,-90 100,-40 70,60 -20,60" fill="#1899A3"/>
+      <polygon points="-20,60 70,60 30,105 -60,80" fill="#0B4B69"/>
+      <polygon points="-80,-40 -20,60 -60,80 -105,10" fill="#1E80AA"/>
+      <polygon points="100,-40 110,20 70,60" fill="#0C2C47"/>
+      
+      <!-- Subtle highlight over globe -->
+      <circle cx="-30" cy="-30" r="40" fill="#FFFFFF" opacity="0.15"/>
+    </g>
+  </g>
+
+  <!-- Foreground dynamic shines / arcs -->
+  <path d="M 120,400 A 420,420 0 0,1 500,80" fill="none" stroke="#FFFFFF" stroke-width="4" opacity="0.15"/>
+  <path d="M 850,650 A 420,420 0 0,1 880,400" fill="none" stroke="#FFFFFF" stroke-width="4" opacity="0.1"/>
+</svg>

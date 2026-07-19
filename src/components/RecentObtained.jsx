@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { onValue } from 'firebase/database'
 import { db, ref } from '../firebase'
+import { useAlbum } from '../context/AlbumContext'
 
 function asTime(value) {
   const number = Number(value)
@@ -46,6 +47,7 @@ function sourceLabel(source) {
 
 export default function RecentObtained({ userId, savedStickers = {} }) {
   const [events, setEvents] = useState({})
+  const { activeAlbumId, getAlbumChildPath } = useAlbum()
 
   useEffect(() => {
     if (!userId) {
@@ -53,10 +55,10 @@ export default function RecentObtained({ userId, savedStickers = {} }) {
       return undefined
     }
 
-    return onValue(ref(db, `users/${userId}/collectionEvents`), snapshot => {
+    return onValue(ref(db, getAlbumChildPath('collectionEvents', userId)), snapshot => {
       setEvents(snapshot.val() || {})
     })
-  }, [userId])
+  }, [activeAlbumId, getAlbumChildPath, userId])
 
   const recent = useMemo(() => {
     const candidates = Object.entries(events || {})

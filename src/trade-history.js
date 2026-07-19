@@ -1,5 +1,10 @@
 import { increment, push } from 'firebase/database'
 import { db, ref, get } from './firebase'
+import { getAlbumChildPath, getStoredActiveAlbumId } from './albums/runtime'
+
+function albumPath(uid, child) {
+  return getAlbumChildPath(uid, child, getStoredActiveAlbumId())
+}
 
 function normalizeCode(value) {
   return String(value || '').trim().toUpperCase()
@@ -27,11 +32,11 @@ export function sumTradeQuantities(value = {}) {
 }
 
 function eventKey(uid) {
-  return push(ref(db, `users/${uid}/collectionEvents`)).key
+  return push(ref(db, albumPath(uid, 'collectionEvents'))).key
 }
 
 export function createManualTradeId(uid) {
-  return push(ref(db, `users/${uid}/tradeHistory`)).key
+  return push(ref(db, albumPath(uid, 'tradeHistory'))).key
 }
 
 export async function buildTradeHistoryUpdates({
@@ -49,7 +54,7 @@ export async function buildTradeHistoryUpdates({
   const safeTradeId = String(tradeId || '').trim()
   if (!safeUid || !safeTradeId) return {}
 
-  const historyPath = `users/${safeUid}/tradeHistory/${safeTradeId}`
+  const historyPath = `${albumPath(safeUid, 'tradeHistory')}/${safeTradeId}`
   const existing = await get(ref(db, historyPath))
   if (existing.exists()) return {}
 
@@ -61,6 +66,7 @@ export async function buildTradeHistoryUpdates({
 
   updates[historyPath] = {
     id: safeTradeId,
+    albumId: getStoredActiveAlbumId(),
     mode,
     role,
     partnerId: String(partnerId || ''),
@@ -73,17 +79,17 @@ export async function buildTradeHistoryUpdates({
     completedAt
   }
 
-  updates[`users/${safeUid}/collectionStats/tradesCompleted`] = increment(1)
-  updates[`users/${safeUid}/collectionStats/${mode === 'qr' ? 'qrTradesCompleted' : 'manualTradesCompleted'}`] = increment(1)
-  if (receivedTotal > 0) updates[`users/${safeUid}/collectionStats/stickersReceivedInTrades`] = increment(receivedTotal)
-  if (deliveredTotal > 0) updates[`users/${safeUid}/collectionStats/stickersDeliveredInTrades`] = increment(deliveredTotal)
-  updates[`users/${safeUid}/collectionStats/lastTradeAt`] = completedAt
-  updates[`users/${safeUid}/collectionStats/lastActivityAt`] = completedAt
+  updates[`${albumPath(safeUid, 'collectionStats')}/tradesCompleted`] = increment(1)
+  updates[`${albumPath(safeUid, 'collectionStats')}/${mode === 'qr' ? 'qrTradesCompleted' : 'manualTradesCompleted'}`] = increment(1)
+  if (receivedTotal > 0) updates[`${albumPath(safeUid, 'collectionStats')}/stickersReceivedInTrades`] = increment(receivedTotal)
+  if (deliveredTotal > 0) updates[`${albumPath(safeUid, 'collectionStats')}/stickersDeliveredInTrades`] = increment(deliveredTotal)
+  updates[`${albumPath(safeUid, 'collectionStats')}/lastTradeAt`] = completedAt
+  updates[`${albumPath(safeUid, 'collectionStats')}/lastActivityAt`] = completedAt
 
   Object.entries(receivedQuantities).forEach(([code, quantity]) => {
     const key = eventKey(safeUid)
     if (!key) return
-    updates[`users/${safeUid}/collectionEvents/${key}`] = {
+    updates[`${albumPath(safeUid, 'collectionEvents')}/${key}`] = {
       type: 'trade_received',
       source: `${mode}_trade`,
       tradeId: safeTradeId,
@@ -96,7 +102,7 @@ export async function buildTradeHistoryUpdates({
   Object.entries(deliveredQuantities).forEach(([code, quantity]) => {
     const key = eventKey(safeUid)
     if (!key) return
-    updates[`users/${safeUid}/collectionEvents/${key}`] = {
+    updates[`${albumPath(safeUid, 'collectionEvents')}/${key}`] = {
       type: 'trade_delivered',
       source: `${mode}_trade`,
       tradeId: safeTradeId,

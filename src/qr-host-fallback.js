@@ -2,10 +2,19 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { auth, db, ref, get } from './firebase'
 import { formatCodes, formatQuantities, showQrOverlay } from './qr-trade-ui'
 import { resolveQrHost } from './qr-host-resolve'
+import { DEFAULT_ALBUM_ID } from './albums/constants'
+import { getStoredActiveAlbumId } from './albums/runtime'
 
 let uid = ''
 let busy = false
 let shown = ''
+
+function belongsToActiveAlbum(session = {}) {
+  const activeAlbumId = getStoredActiveAlbumId()
+  return session.albumId
+    ? session.albumId === activeAlbumId
+    : activeAlbumId === DEFAULT_ALBUM_ID
+}
 
 async function scan() {
   if (!uid || busy || document.visibilityState === 'hidden') return
@@ -17,7 +26,7 @@ async function scan() {
     const pending = []
     Object.values(users).forEach(record => {
       Object.values(record?.qrTradeOutgoing || {}).forEach(session => {
-        if (session?.hostId === uid && session?.status === 'pending' && !decisions[session.id] && (!session.expiresAt || session.expiresAt > Date.now())) pending.push(session)
+        if (session?.hostId === uid && session?.status === 'pending' && belongsToActiveAlbum(session) && !decisions[session.id] && (!session.expiresAt || session.expiresAt > Date.now())) pending.push(session)
       })
     })
     pending.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))

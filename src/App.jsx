@@ -7,6 +7,7 @@ import './qr-upload-reader.js'
 import './qr-match-layout-fixes.js'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { UserProvider, useUser } from './context/UserContext'
+import { AlbumProvider } from './context/AlbumContext'
 import { EditLockProvider } from './context/EditLockContext'
 import { StickersProvider } from './context/StickersContext'
 import Layout from './components/Layout'
@@ -61,11 +62,13 @@ export default function App() {
   return (
     <BrowserRouter basename={routerBasename}>
       <UserProvider>
-        <EditLockProvider>
-          <StickersProvider>
-            <AppRoutes />
-          </StickersProvider>
-        </EditLockProvider>
+        <AlbumProvider>
+          <EditLockProvider>
+            <StickersProvider>
+              <AppRoutes />
+            </StickersProvider>
+          </EditLockProvider>
+        </AlbumProvider>
       </UserProvider>
     </BrowserRouter>
   )

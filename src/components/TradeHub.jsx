@@ -3,8 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useUser } from '../context/UserContext'
 import { useStickers } from '../context/StickersContext'
 import { useEditLock } from '../context/EditLockContext'
+import { useAlbum } from '../context/AlbumContext'
 import { db, ref, get } from '../firebase'
 import { buildAlbumGroups, getStickerDisplayNumber, isIrregularStickerCode } from '../data/albumGroups'
+import { getAlbumStickersFromUser, isProfileUsingAlbum } from '../albums/runtime'
 
 const QR_SCANNER_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js'
 let qrScannerLibraryPromise = null
@@ -185,7 +187,7 @@ function QrMatchGrid({ codes, getAvailable, emptyMessage }) {
   )
 }
 
-function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartnerIdChange }) {
+function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartnerIdChange, activeAlbumId, activeAlbumTitle }) {
   const scannerRef = useRef(null)
   const fileScannerRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -203,8 +205,8 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
   const myName = `${user?.name || ''} ${user?.surname || ''}`.trim() || 'Mi cuenta'
   const qrPayload = useMemo(() => {
     const basePath = import.meta.env.BASE_URL || '/'
-    return `${window.location.origin}${basePath}trade?qrUser=${encodeURIComponent(user.id)}`
-  }, [user.id])
+    return `${window.location.origin}${basePath}trade?qrUser=${encodeURIComponent(user.id)}&album=${encodeURIComponent(activeAlbumId)}`
+  }, [activeAlbumId, user.id])
   const qrImageUrl = useMemo(
     () => `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=14&data=${encodeURIComponent(qrPayload)}`,
     [qrPayload]
@@ -231,7 +233,10 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
 
       const partnerData = snapshot.val() || {}
       const partnerProfile = partnerData.profile || {}
-      const partnerStickers = partnerData.stickers || {}
+      if (!isProfileUsingAlbum(partnerProfile, activeAlbumId)) {
+        throw new Error(`La otra persona no tiene cargado ${activeAlbumTitle}. Ambos deben usar el mismo álbum.`)
+      }
+      const partnerStickers = getAlbumStickersFromUser(partnerData, activeAlbumId)
 
       if (partnerProfile.emailVerified === false) {
         throw new Error('La cuenta vinculada todavía no está habilitada.')
@@ -259,7 +264,7 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
     } finally {
       setLoadingMatch(false)
     }
-  }, [onPartnerIdChange, orderedCodes, stickers, user.id])
+  }, [activeAlbumId, activeAlbumTitle, onPartnerIdChange, orderedCodes, stickers, user.id])
 
   useEffect(() => {
     if (!initialPartnerId || initialPartnerId === loadedPartnerId) return
@@ -687,6 +692,7 @@ export default function TradeHub() {
   const { user } = useUser()
   const { stickers, applyManualTrade } = useStickers()
   const { editingLocked } = useEditLock()
+  const { activeAlbumId, activeAlbum } = useAlbum()
   const [searchParams, setSearchParams] = useSearchParams()
   const groups = useMemo(() => buildAlbumGroups(), [])
   const orderedCodes = useMemo(() => groups.flatMap(group => group.codes), [groups])
@@ -750,6 +756,8 @@ export default function TradeHub() {
           orderedCodes={orderedCodes}
           initialPartnerId={qrPartnerId}
           onPartnerIdChange={setPartnerIdInUrl}
+          activeAlbumId={activeAlbumId}
+          activeAlbumTitle={activeAlbum.shortTitle}
         />
       )}
     </div>

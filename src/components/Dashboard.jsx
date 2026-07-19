@@ -3,8 +3,10 @@ import { onValue } from 'firebase/database'
 import { useNavigate } from 'react-router-dom'
 import { useStickers } from '../context/StickersContext'
 import { useUser } from '../context/UserContext'
+import { useAlbum } from '../context/AlbumContext'
 import { db, ref } from '../firebase'
-import { specials, teams, teamNames, getTeamStickerCount } from '../data/stickersData'
+import { buildAlbumGroups } from '../data/albumGroups'
+import { DEFAULT_ALBUM_ID } from '../albums/constants'
 
 function normalizeStickerState(state) {
   return {
@@ -30,37 +32,44 @@ const spanishNameByTeam = {
   COL: 'Colombia', ENG: 'Inglaterra', CRO: 'Croacia', GHA: 'Ghana', PAN: 'Panamá', CC: 'Coca-Cola'
 }
 
-function buildSections() {
-  return [
-    {
-      id: 'specials',
-      title: 'FIFA',
-      total: specials.length,
-      codes: specials,
-      albumTarget: '/specials'
-    },
-    ...teams.map(team => {
-      const total = getTeamStickerCount(team)
-      return {
-        id: team,
-        title: spanishNameByTeam[team] || teamNames[team] || team,
-        total,
-        codes: Array.from({ length: total }, (_, i) => `${team}${i + 1}`),
-        albumTarget: `/team/${team}`
-      }
-    })
-  ]
+function buildSections(albumId) {
+  const groups = buildAlbumGroups()
+  if (albumId === DEFAULT_ALBUM_ID) {
+    const leading = groups.filter(group => group.placement === 'leading')
+    const teams = groups.filter(group => group.team)
+    return [
+      {
+        id: 'specials',
+        title: 'FIFA',
+        total: leading.reduce((total, group) => total + group.codes.length, 0),
+        codes: leading.flatMap(group => group.codes),
+        albumTarget: '/specials'
+      },
+      ...teams.map(group => ({
+        ...group,
+        id: group.team,
+        title: spanishNameByTeam[group.team] || group.title || group.team,
+        total: group.codes.length,
+        albumTarget: `/team/${group.team}`
+      }))
+    ]
+  }
+
+  return groups.map(group => ({
+    ...group,
+    total: group.codes.length,
+    albumTarget: `/album#${group.id}`
+  }))
 }
 
 function sectionLabel(section) {
   if (!section) return '—'
-  if (section.id === 'specials') return 'FIFA'
-  return spanishNameByTeam[section.id] || section.title || section.id
+  return section.title || section.id
 }
 
 function sectionTarget(section) {
   if (!section) return ''
-  return section.id === 'specials' ? '/specials' : `/team/${section.id}`
+  return section.albumTarget || `/album#${section.id}`
 }
 
 function clampPercent(value) {
@@ -142,6 +151,7 @@ function CollectorRadar({ metrics }) {
 export default function Dashboard() {
   const { getStats, savedStickers, saveToCloud, lastSaved, pendingChanges } = useStickers()
   const { user } = useUser()
+  const { activeAlbum, getAlbumChildPath } = useAlbum()
   const stats = getStats()
   const navigate = useNavigate()
   const [collectionStats, setCollectionStats] = useState({})
@@ -160,13 +170,13 @@ export default function Dashboard() {
       return undefined
     }
 
-    const stopStats = onValue(ref(db, `users/${user.id}/collectionStats`), snapshot => {
+    const stopStats = onValue(ref(db, getAlbumChildPath('collectionStats')), snapshot => {
       setCollectionStats(snapshot.val() || {})
     })
-    const stopCompletions = onValue(ref(db, `users/${user.id}/sectionCompletions`), snapshot => {
+    const stopCompletions = onValue(ref(db, getAlbumChildPath('sectionCompletions')), snapshot => {
       setSectionCompletions(snapshot.val() || {})
     })
-    const stopEvents = onValue(ref(db, `users/${user.id}/collectionEvents`), snapshot => {
+    const stopEvents = onValue(ref(db, getAlbumChildPath('collectionEvents')), snapshot => {
       setCollectionEvents(snapshot.val() || {})
     })
 
@@ -175,10 +185,10 @@ export default function Dashboard() {
       stopCompletions()
       stopEvents()
     }
-  }, [user?.id])
+  }, [activeAlbum.id, getAlbumChildPath, user?.id])
 
   const progressSections = useMemo(() => {
-    return buildSections().map(section => {
+    return buildSections(activeAlbum.id).map(section => {
       const owned = section.codes.reduce((count, code) => {
         return count + (normalizeStickerState(savedStickers[code]).owned ? 1 : 0)
       }, 0)
@@ -192,7 +202,7 @@ export default function Dashboard() {
 
       return { ...section, owned, missing, duplicates, percent }
     })
-  }, [savedStickers])
+  }, [activeAlbum.id, savedStickers])
 
   const completedSections = useMemo(
     () => progressSections.filter(section => section.percent >= 100),
@@ -254,13 +264,19 @@ export default function Dashboard() {
     return result.sort((a, b) => b.timestamp - a.timestamp).slice(0, 5)
   }, [collectionEvents, savedStickers])
 
-  const specialSection = progressSections.find(section => section.id === 'specials')
+  const specialSections = progressSections.filter(section => (
+    activeAlbum.id === DEFAULT_ALBUM_ID
+      ? section.id === 'specials'
+      : activeAlbum.highlightGroupIds.includes(section.id)
+  ))
+  const specialOwned = specialSections.reduce((total, section) => total + section.owned, 0)
+  const specialTotal = specialSections.reduce((total, section) => total + section.total, 0)
   const lastCompletedSection = progressSections.find(section => section.id === latestCompletion?.sectionId)
   const tradesCompleted = Math.max(0, Number(collectionStats.tradesCompleted) || 0)
   const tradeDelivered = Math.max(0, Number(collectionStats.stickersDeliveredInTrades) || 0)
 
   const academyMetrics = useMemo(() => {
-    const specialPercent = specialSection?.percent || 0
+    const specialPercent = specialTotal > 0 ? Math.round((specialOwned / specialTotal) * 100) : 0
     const tradeInventory = tradeDelivered + stats.duplicates
     const tradeScore = tradesCompleted > 0 && tradeInventory > 0
       ? clampPercent((tradeDelivered / tradeInventory) * 100)
@@ -280,7 +296,7 @@ export default function Dashboard() {
       { label: 'Cobertura', value: coverageScore },
       { label: 'Balance', value: balanceScore }
     ]
-  }, [completionPercent, progressSections, specialSection?.percent, stats.duplicates, tradeDelivered, tradesCompleted])
+  }, [completionPercent, progressSections, specialOwned, specialTotal, stats.duplicates, tradeDelivered, tradesCompleted])
 
   const completionCount = Math.max(completedSections.length, Object.keys(sectionCompletions || {}).length)
   const latestDate = formatShortDate(latestCompletion?.completedAt)
@@ -304,8 +320,8 @@ export default function Dashboard() {
       icon: '⭐',
       tone: 'purple',
       label: 'Especiales pegadas',
-      value: `${specialSection?.owned || 0} / ${specialSection?.total || specials.length}`,
-      onClick: () => navigate('/specials')
+      value: `${specialOwned} / ${specialTotal}`,
+      onClick: () => navigate(activeAlbum.id === DEFAULT_ALBUM_ID ? '/specials' : '/album')
     },
     {
       icon: '🌐',

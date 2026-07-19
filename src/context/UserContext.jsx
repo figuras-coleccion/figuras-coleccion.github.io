@@ -20,6 +20,8 @@ import {
   getAdditionalUserInfo
 } from '../firebase'
 import { detectCountryCode, getCountryName } from '../data/countries'
+import { DEFAULT_ALBUM_ID } from '../albums/constants'
+import { normalizeAlbumId } from '../albums/runtime'
 
 const UserContext = createContext()
 
@@ -136,6 +138,7 @@ function buildUserData(firebaseUser, profile = {}) {
       pendingFromVersion ||
       recentAccountMissingOnboarding,
     howItWorksSeenAt,
+    activeAlbumId: normalizeAlbumId(profile.activeAlbumId || DEFAULT_ALBUM_ID),
     isAdmin: isAdminEmail(profile.email || firebaseUser.email)
   }
 }
@@ -264,7 +267,8 @@ export function UserProvider({ children }) {
       onboardingVersion: ONBOARDING_VERSION,
       onboardingSeenVersion: 0,
       showHowItWorksOnFirstLogin: true,
-      howItWorksSeenAt: null
+      howItWorksSeenAt: null,
+      activeAlbumId: DEFAULT_ALBUM_ID
     }
 
     await set(ref(db, `users/${fbUser.uid}/profile`), userData)
@@ -320,7 +324,8 @@ export function UserProvider({ children }) {
         showHowItWorksOnFirstLogin: true,
         howItWorksSeenAt: null,
         createdAt: Number(existingProfile.createdAt) || now,
-        onboardingInitializedAt: now
+        onboardingInitializedAt: now,
+        activeAlbumId: normalizeAlbumId(existingProfile.activeAlbumId || DEFAULT_ALBUM_ID)
       })
     }
 

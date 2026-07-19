@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStickers } from '../context/StickersContext'
-import { teams, teamNames, getTeamStickerCount } from '../data/stickersData'
+import { getAlbumGroup } from '../data/albumGroups'
 import StickerGrid from './StickerGrid'
 
 export default function TeamPage() {
@@ -11,7 +11,8 @@ export default function TeamPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  const validTeam = teams.includes(teamCode)
+  const group = getAlbumGroup(teamCode)
+  const validTeam = Boolean(group)
   
   useEffect(() => {
     if (!validTeam) {
@@ -21,19 +22,14 @@ export default function TeamPage() {
 
   if (!validTeam) return null
 
-  const teamStickers = []
-  const teamTotal = getTeamStickerCount(teamCode)
-
-  for (let i = 1; i <= teamTotal; i++) {
-    const code = `${teamCode}${i}`
-    teamStickers.push({
+  const teamStickers = group.codes.map(code => ({
       code,
       owned: stickers[code]?.owned || false,
       duplicates: stickers[code]?.duplicates || 0,
       locked: isStickerLocked(code),
       pending: Boolean(pendingChanges[code])
-    })
-  }
+  }))
+  const teamTotal = teamStickers.length
 
   const ownedCount = teamStickers.filter(s => s.owned).length
   const missingList = teamStickers.filter(s => !s.owned).map(s => s.code)
@@ -41,7 +37,7 @@ export default function TeamPage() {
 
   const handleSave = async () => {
     setSaving(true)
-    const success = await saveTeamPage(teamCode)
+    const success = await saveTeamPage(group.id)
     setSaving(false)
     if (success) {
       setSaved(true)
@@ -64,7 +60,7 @@ export default function TeamPage() {
           ←
         </button>
         <h2 style={{ fontSize: '18px' }}>
-          {teamNames[teamCode] || teamCode}
+          {group.title}
         </h2>
         <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
           ({ownedCount}/{teamTotal})
