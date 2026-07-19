@@ -79,6 +79,8 @@ function buildUserData(firebaseUser, profile = {}) {
     emailVerified: Boolean(firebaseUser.emailVerified),
     createdAt: profile.createdAt || Date.now(),
     verifiedAt: profile.verifiedAt || (firebaseUser.emailVerified ? Date.now() : null),
+    showHowItWorksOnFirstLogin: profile.showHowItWorksOnFirstLogin === true,
+    howItWorksSeenAt: profile.howItWorksSeenAt || null,
     isAdmin: isAdminEmail(profile.email || firebaseUser.email)
   }
 }
@@ -194,7 +196,8 @@ export function UserProvider({ children }) {
       provider: 'password',
       emailVerified: false,
       createdAt: Date.now(),
-      verifiedAt: null
+      verifiedAt: null,
+      showHowItWorksOnFirstLogin: true
     }
 
     await set(ref(db, `users/${fbUser.uid}/profile`), userData)
@@ -251,6 +254,13 @@ export function UserProvider({ children }) {
       const error = new Error('Esta cuenta de Google todavía no está registrada. Entra a Registro y crea tu cuenta con Google.')
       error.code = 'auth/google-account-not-registered'
       throw error
+    }
+
+    if (intent === 'register' && additionalInfo?.isNewUser) {
+      await update(ref(db, `users/${credential.user.uid}/profile`), {
+        showHowItWorksOnFirstLogin: true,
+        createdAt: Date.now()
+      })
     }
 
     await reload(credential.user)
@@ -389,6 +399,28 @@ export function UserProvider({ children }) {
     })
   }, [])
 
+  const markHowItWorksAsSeen = useCallback(async () => {
+    if (!auth.currentUser) return
+
+    const seenAt = Date.now()
+
+    setUser(currentUser => {
+      if (!currentUser) return currentUser
+      const nextUser = {
+        ...currentUser,
+        showHowItWorksOnFirstLogin: false,
+        howItWorksSeenAt: seenAt
+      }
+      localStorage.setItem('panini_user', JSON.stringify(nextUser))
+      return nextUser
+    })
+
+    await update(ref(db, `users/${auth.currentUser.uid}/profile`), {
+      showHowItWorksOnFirstLogin: false,
+      howItWorksSeenAt: seenAt
+    })
+  }, [])
+
   const logout = useCallback(async () => {
     localStorage.removeItem('panini_user')
     setUser(null)
@@ -409,6 +441,7 @@ export function UserProvider({ children }) {
       loginWithGoogle,
       completeProfile,
       updateUserProfile,
+      markHowItWorksAsSeen,
       logout,
       resendVerificationEmail,
       refreshEmailVerification,

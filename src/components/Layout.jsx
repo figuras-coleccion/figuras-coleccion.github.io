@@ -4,6 +4,7 @@ import { useUser } from '../context/UserContext'
 import { useStickers } from '../context/StickersContext'
 import { useEditLock } from '../context/EditLockContext'
 import { db, ref, get } from '../firebase'
+import HowItWorksModal from './HowItWorksModal'
 
 const headerStyles = `
   .app-header{min-height:108px;padding:12px 16px;gap:14px}.brand-block{flex:1 1 auto;min-width:0}.brand-primary{display:flex;align-items:center;gap:14px;min-width:0}.brand-logo{width:clamp(74px,8vw,96px);height:clamp(74px,8vw,96px);flex:0 0 auto;display:block;object-fit:contain;filter:drop-shadow(0 5px 10px rgba(15,23,42,.14))}.app-header .brand-title{margin:0;max-width:none;color:#050505!important;font-family:'Poppins','Montserrat','Avenir Next',Arial,sans-serif;font-size:clamp(24px,3.2vw,42px)!important;font-weight:800!important;line-height:1.03!important;letter-spacing:-.035em}.brand-title-line{display:block;white-space:nowrap}.brand-tagline,.brand-members{margin-left:calc(clamp(74px,8vw,96px) + 14px)}
@@ -13,11 +14,12 @@ const headerStyles = `
 `
 
 export default function Layout() {
-  const { user, logout, isAdmin } = useUser()
+  const { user, logout, isAdmin, markHowItWorksAsSeen } = useUser()
   const { pendingChanges, saveToCloud } = useStickers()
   const { editingLocked, toggleEditingLock } = useEditLock()
   const location = useLocation()
   const [memberCount, setMemberCount] = useState(null)
+  const [firstRunHelpOpen, setFirstRunHelpOpen] = useState(false)
   const initial = (user?.name || user?.email || 'U').slice(0, 1).toUpperCase()
 
   const pendingSignature = useMemo(
@@ -59,6 +61,22 @@ export default function Layout() {
     return () => window.clearTimeout(timer)
   }, [pendingSignature, saveToCloud, user?.id])
 
+
+  useEffect(() => {
+    if (user?.showHowItWorksOnFirstLogin === true) {
+      setFirstRunHelpOpen(true)
+    }
+  }, [user?.id, user?.showHowItWorksOnFirstLogin])
+
+  const handleFirstRunHelpClose = async () => {
+    setFirstRunHelpOpen(false)
+    try {
+      await markHowItWorksAsSeen()
+    } catch (error) {
+      console.warn('No se pudo registrar que el tutorial fue visto:', error)
+    }
+  }
+
   const formattedMembers = memberCount === null ? null : new Intl.NumberFormat('es-PE').format(memberCount)
   const navClass = ({ isActive }) => isActive ? 'active' : ''
 
@@ -97,6 +115,8 @@ export default function Layout() {
         {isAdmin && <NavLink to="/admin" className={navClass}><span className="icon">🛡️</span><span>Admin</span></NavLink>}
         <NavLink to="/extras" className={navClass}><span className="icon">📦</span><span>Extras</span></NavLink>
       </nav>
+
+      {firstRunHelpOpen ? <HowItWorksModal onClose={() => void handleFirstRunHelpClose()} /> : null}
     </>
   )
 }
