@@ -128,7 +128,7 @@ textarea {
 }
 
 .sticker-number {
-  font-size: clamp(16px, 4.2vw, 24px);
+  font-size: clamp(12.8px, 3.36vw, 19.2px);
   font-weight: 500;
   line-height: 1;
 }

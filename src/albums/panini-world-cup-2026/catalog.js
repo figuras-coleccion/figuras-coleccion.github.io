@@ -71,9 +71,9 @@ const irregularCodeSet = new Set([
 export const paniniCatalog = {
   id: DEFAULT_ALBUM_ID,
   catalogVersion: 1,
-  title: 'Panini World Cup 2026 Sticker Tracker',
+  title: 'Panini World Cup 2026',
   shortTitle: 'Panini Mundial 2026',
-  brandTitleLines: ['Panini World Cup 2026', 'Sticker Tracker'],
+  brandTitleLines: ['Panini World Cup 2026'],
   publisher: 'Panini',
   edition: 'Mundial 2026',
   icon: 'albums/panini-world-cup-2026/icon.svg',

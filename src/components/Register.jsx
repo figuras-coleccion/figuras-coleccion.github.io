@@ -290,8 +290,8 @@ export default function Register() {
   return (
     <div className="register-page">
       <div className="register-card">
-        <h1>{activeAlbum.id === DEFAULT_ALBUM_ID ? '⚽ Panini World Cup 2026 Sticker Tracker' : activeAlbum.shortTitle}</h1>
-        <p className="subtitle">{activeAlbum.id === DEFAULT_ALBUM_ID ? 'World Cup Sticker Tracker' : 'Mi álbum de figuritas'}</p>
+        <h1>{activeAlbum.id === DEFAULT_ALBUM_ID ? '⚽ Panini World Cup 2026' : activeAlbum.shortTitle}</h1>
+        <p className="subtitle">{activeAlbum.id === DEFAULT_ALBUM_ID ? 'Mi album de figuritas' : 'Mi álbum de figuritas'}</p>
 
         {screen === 'login' ? (
           <div className="login-method-card auth-single-screen">

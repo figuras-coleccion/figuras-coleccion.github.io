@@ -168,7 +168,6 @@ function StickerToken({ sticker, onUpdate, onRemove, editingLocked }) {
           </span>
         )}
       </div>
-      <span className="sticker-code-caption">{code}</span>
     </div>
   )
 }

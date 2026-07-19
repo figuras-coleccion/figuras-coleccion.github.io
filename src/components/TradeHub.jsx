@@ -187,7 +187,7 @@ function QrMatchGrid({ codes, getAvailable, emptyMessage }) {
   )
 }
 
-function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartnerIdChange, activeAlbumId, activeAlbumTitle }) {
+function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartnerIdChange, activeAlbumId, activeAlbumTitle, activeAlbumIcon }) {
   const scannerRef = useRef(null)
   const fileScannerRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -208,9 +208,16 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
     return `${window.location.origin}${basePath}trade?qrUser=${encodeURIComponent(user.id)}&album=${encodeURIComponent(activeAlbumId)}`
   }, [activeAlbumId, user.id])
   const qrImageUrl = useMemo(
-    () => `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=14&data=${encodeURIComponent(qrPayload)}`,
+    () => `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=14&qzone=4&ecc=H&data=${encodeURIComponent(qrPayload)}`,
     [qrPayload]
   )
+
+  const albumIconUrl = useMemo(() => {
+    const basePath = import.meta.env.BASE_URL || '/'
+    const normalizedBase = basePath.endsWith('/') ? basePath : `${basePath}/`
+    const normalizedIcon = String(activeAlbumIcon || '').replace(/^\/+/, '')
+    return normalizedIcon ? `${normalizedBase}${normalizedIcon}` : ''
+  }, [activeAlbumIcon])
 
   const loadPartnerMatch = useCallback(async (partnerId, { updateUrl = false } = {}) => {
     const cleanPartnerId = String(partnerId || '').trim()
@@ -465,7 +472,12 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
         </div>
 
         <div className="qr-image-frame">
-          <img src={qrImageUrl} alt="Código QR de mi cuenta Panini" />
+          <img className="qr-code-image" src={qrImageUrl} alt={`Código QR de intercambio de ${activeAlbumTitle}`} />
+          {albumIconUrl && (
+            <span className="qr-album-icon-overlay" aria-hidden="true">
+              <img src={albumIconUrl} alt="" />
+            </span>
+          )}
         </div>
         <div className="qr-user-name">{myName}</div>
 
@@ -758,6 +770,7 @@ export default function TradeHub() {
           onPartnerIdChange={setPartnerIdInUrl}
           activeAlbumId={activeAlbumId}
           activeAlbumTitle={activeAlbum.shortTitle}
+          activeAlbumIcon={activeAlbum.icon}
         />
       )}
     </div>
