@@ -13,11 +13,45 @@ function normalizeStickerState(state) {
   }
 }
 
-function buildLabelMeta(group, part, totalParts) {
+function getCompactCategoryLabel(group) {
+  const shortCode = String(group?.shortCode || '').trim().toUpperCase()
+  const description = `${group?.id || ''} ${group?.title || ''}`.toLowerCase()
+
+  if (shortCode === 'EST' || description.includes('estadio')) return 'Estadios'
+  if (shortCode === 'CM' || description.includes('campeon')) return 'Campeones'
+  if (shortCode === '1RA' || description.includes('primer mundial') || description.includes('1er mundial')) return '1er Mundial'
+  if (description.includes('repech')) return 'Repechaje'
+  if (description.includes('clasific') || shortCode === 'A-G') return 'Clasificados'
+  if (description.includes('escud') || shortCode === 'E') return 'Escudos'
+  if (description.includes('troquel') || shortCode === 'T') return 'Troqueladas'
+
+  return String(group?.title || shortCode || 'Especiales').trim()
+}
+
+function getRowSizeForAlbumGroup(group, albumId) {
+  if (albumId === DEFAULT_ALBUM_ID) return 20
+
+  const shortCode = String(group?.shortCode || '').trim().toUpperCase()
+  const description = `${group?.id || ''} ${group?.title || ''}`.toLowerCase()
+  const forceTwoRows = shortCode === 'E' || shortCode === 'T' || description.includes('repech') || description.includes('escud') || description.includes('troquel')
+
+  if (forceTwoRows) return Math.ceil(group.codes.length / 2)
+  return Math.min(16, Math.max(1, group.codes.length))
+}
+
+function buildLabelMeta(group, part, totalParts, albumId) {
   const suffix = totalParts > 1 ? ` ${part + 1}` : ''
   if (group.flagCode) {
     return { type: 'flag', flagCode: group.flagCode, code: `${group.shortCode}${suffix}` }
   }
+
+  if (albumId !== DEFAULT_ALBUM_ID) {
+    return {
+      type: 'category',
+      text: getCompactCategoryLabel(group)
+    }
+  }
+
   return {
     type: 'brand',
     brand: group.type === 'collection' ? 'coca-cola' : 'fifa',
@@ -53,8 +87,9 @@ function buildVisualRows(orderMode = 'album', albumId = DEFAULT_ALBUM_ID) {
 
     return [specials, ...orderedCountries, ...trailingGroups].map(group => ({
       id: group.id,
-      labelMeta: buildLabelMeta(group, 0, 1),
+      labelMeta: buildLabelMeta(group, 0, 1, albumId),
       fullName: group.title,
+      columns: 20,
       cells: group.codes.map(code => ({ code, number: getStickerDisplayNumber(code) }))
     }))
   }
@@ -68,17 +103,27 @@ function buildVisualRows(orderMode = 'album', albumId = DEFAULT_ALBUM_ID) {
     : groups
 
   return orderedGroups.flatMap(group => {
-    const parts = chunks(group.codes)
+    const rowSize = getRowSizeForAlbumGroup(group, albumId)
+    const parts = chunks(group.codes, rowSize)
     return parts.map((codes, part) => ({
       id: `${group.id}-${part}`,
-      labelMeta: buildLabelMeta(group, part, parts.length),
+      labelMeta: buildLabelMeta(group, part, parts.length, albumId),
       fullName: group.title,
+      columns: rowSize,
       cells: codes.map(code => ({ code, number: getStickerDisplayNumber(code) }))
     }))
   })
 }
 
 function VisualRowLabel({ meta, fullName }) {
+  if (meta.type === 'category') {
+    return (
+      <div className="visual-report-row-label visual-report-row-label-category" title={fullName}>
+        <span className="visual-report-category-badge">{meta.text}</span>
+      </div>
+    )
+  }
+
   return (
     <div className="visual-report-row-label" title={fullName}>
       <span className="visual-report-label-media">
@@ -107,6 +152,7 @@ export default function VisualMissingReportPage() {
   const { savedStickers } = useStickers()
   const { activeAlbum } = useAlbum()
   const [orderMode, setOrderMode] = useState('album')
+  const isPaniniReport = activeAlbum.id === DEFAULT_ALBUM_ID
 
   const rows = useMemo(() => {
     return buildVisualRows(orderMode, activeAlbum.id).map(row => {
@@ -132,10 +178,10 @@ export default function VisualMissingReportPage() {
   }, [activeAlbum.id, orderMode, savedStickers])
 
   return (
-    <div className="visual-report-page">
+    <div className={`visual-report-page ${isPaniniReport ? 'visual-report-panini' : 'visual-report-multi-page'}`}>
       <div className="trade-report-actions no-print">
         <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>
-          ← Volver
+          ÃƒÂ¢Ã¢â‚¬Â Ã‚Â Volver
         </button>
 
         <div className="visual-report-action-group">
@@ -146,7 +192,7 @@ export default function VisualMissingReportPage() {
               aria-pressed={orderMode === 'album'}
               onClick={() => setOrderMode('album')}
             >
-              Orden del Álbum
+              Orden del ÃƒÆ’Ã‚Âlbum
             </button>
             <button
               type="button"
@@ -154,12 +200,12 @@ export default function VisualMissingReportPage() {
               aria-pressed={orderMode === 'alphabetical'}
               onClick={() => setOrderMode('alphabetical')}
             >
-              Orden Alfabético
+              Orden AlfabÃƒÆ’Ã‚Â©tico
             </button>
           </div>
 
           <button type="button" className="btn-primary" onClick={() => window.print()}>
-            🖨️ Imprimir / Guardar PDF
+            ÃƒÂ°Ã…Â¸Ã¢â‚¬â€œÃ‚Â¨ÃƒÂ¯Ã‚Â¸Ã‚Â Imprimir / Guardar PDF
           </button>
         </div>
       </div>
@@ -179,8 +225,11 @@ export default function VisualMissingReportPage() {
             <div key={row.id} className="visual-report-row" title={row.fullName}>
               <VisualRowLabel meta={row.labelMeta} fullName={row.fullName} />
 
-              <div className="visual-report-cells">
-                {Array.from({ length: 20 }, (_, index) => {
+              <div
+                className="visual-report-cells"
+                style={{ '--visual-report-columns': row.columns }}
+              >
+                {Array.from({ length: row.columns }, (_, index) => {
                   const cell = row.cells[index]
                   if (!cell) {
                     return <span key={`blank-${index}`} className="visual-sticker-cell blank" />
@@ -190,7 +239,7 @@ export default function VisualMissingReportPage() {
                     <span
                       key={cell.code}
                       className={`visual-sticker-cell ${cell.owned ? 'owned' : 'missing'} ${cell.duplicates === 1 ? 'duplicate-one' : ''} ${cell.duplicates > 1 ? 'duplicate-multi' : ''}`}
-                      title={`${cell.code} · ${cell.owned ? (cell.duplicates === 1 ? 'Repetida (01) para cambiar' : cell.duplicates > 1 ? 'Repetidas (02+) para cambiar' : 'Pegada') : 'Falta'}`}
+                      title={`${cell.code} Ãƒâ€šÃ‚Â· ${cell.owned ? (cell.duplicates === 1 ? 'Repetida (01) para cambiar' : cell.duplicates > 1 ? 'Repetidas (02+) para cambiar' : 'Pegada') : 'Falta'}`}
                     >
                       {cell.number}
                       {cell.duplicates > 1 ? (

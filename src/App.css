@@ -3270,3 +3270,112 @@ select:focus {
 
 /* ========== Acceso unificado Google + correo ========== */
 .auth-single-screen{padding:18px}.google-access-note{margin:-2px 0 16px;color:var(--text-secondary);font-size:10px;line-height:1.45;text-align:center}.auth-register-divider{display:flex;align-items:center;gap:10px;margin:18px 0 10px;color:var(--text-secondary);font-size:10px;font-weight:800}.auth-register-divider::before,.auth-register-divider::after{content:'';height:1px;flex:1;background:var(--border)}.auth-register-email{margin-top:0}.email-register-card{background:rgba(15,15,35,.7);border:1px solid var(--border);border-radius:18px;padding:16px}.email-register-card h2{margin:0 0 8px;text-align:center;font-size:19px}.email-register-card .auth-section-title{margin-bottom:16px}
+
+/* REPORT_3REYES_A4_WIDTH_START */
+.visual-report-cells {
+  grid-template-columns: repeat(var(--visual-report-columns, 20), minmax(0, 1fr));
+}
+
+.visual-report-row-label.visual-report-row-label-category {
+  display: flex;
+  grid-template-columns: none;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+}
+
+.visual-report-category-badge {
+  width: 100%;
+  min-height: 18px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-size: 8.4px;
+  line-height: 1;
+  font-weight: 900;
+  text-align: center;
+  white-space: nowrap;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.visual-report-page.visual-report-multi-page .visual-report-row {
+  grid-template-columns: 104px 1fr;
+}
+
+@media (max-width: 700px) {
+  .visual-report-page.visual-report-multi-page .visual-report-row {
+    grid-template-columns: 94px 1fr;
+  }
+
+  .visual-report-category-badge {
+    font-size: 7.4px;
+  }
+}
+
+@media print {
+  .visual-report-page.visual-report-multi-page .visual-report-sheet {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-grid {
+    display: block !important;
+    min-height: 0 !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-row {
+    display: grid !important;
+    grid-template-columns: 84px 1fr !important;
+    min-height: 18.4px !important;
+    height: auto !important;
+    gap: 1.4px !important;
+    margin-bottom: 0.75px !important;
+    align-items: stretch !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-row-label {
+    height: 18.4px !important;
+    min-height: 18.4px !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-row-label.visual-report-row-label-category {
+    padding: 1px 2px !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-category-badge {
+    height: 13px !important;
+    min-height: 13px !important;
+    padding: 1px 2px !important;
+    border-radius: 2px !important;
+    font-size: 5.8px !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-cells {
+    height: 18.4px !important;
+    min-height: 18.4px !important;
+    gap: 0.65px !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-sticker-cell {
+    height: 18.4px !important;
+    min-height: 18.4px !important;
+    font-size: 9.2px !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-footer {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+/* REPORT_3REYES_A4_WIDTH_END */
