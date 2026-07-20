@@ -3454,57 +3454,108 @@ select:focus {
 
   .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only {
     flex: 0 0 auto !important;
-    margin-bottom: 1.2mm !important;
+    margin-bottom: 0.8mm !important;
   }
 
+  .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only > .visual-report-legend {
+    min-height: 3.8mm !important;
+    padding: 0.55mm 1.2mm !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-legend span {
+    font-size: 6.5px !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-legend i {
+    width: 7px !important;
+    height: 7px !important;
+  }
+
+  /*
+   * El catalogo 3 Reyes produce exactamente 59 filas:
+   * 1 Estadios + 48 selecciones + 3 especiales + 4 Repechaje + 3 Escudos.
+   * La grilla reparte esas 59 filas en toda la altura disponible.
+   */
   .visual-report-page.visual-report-multi-page .visual-report-grid {
     flex: 1 1 auto !important;
     min-height: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.45px !important;
+    height: auto !important;
+    display: grid !important;
+    grid-template-rows: repeat(59, minmax(0, 1fr)) !important;
+    gap: 0.25px !important;
     overflow: hidden !important;
   }
 
-  .visual-report-page.visual-report-multi-page .visual-report-row {
-    flex: 1 1 0 !important;
-    height: auto !important;
+  .visual-report-page.visual-report-multi-page .visual-report-row,
+  .visual-report-page.visual-report-multi-page .visual-report-row:nth-child(5n):not(:last-child) {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 100% !important;
     min-height: 0 !important;
     max-height: none !important;
     margin: 0 !important;
     padding: 0 !important;
     display: grid !important;
-    grid-template-columns: 82px 1fr !important;
-    gap: 1.2px !important;
+    grid-template-columns: 82px minmax(0, 1fr) !important;
+    gap: 1.1px !important;
     align-items: stretch !important;
+    border-bottom-width: 0.45px !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
-  .visual-report-page.visual-report-multi-page .visual-report-row:nth-child(5n):not(:last-child) {
-    margin-bottom: 0 !important;
-    padding-bottom: 0 !important;
-  }
-
   .visual-report-page.visual-report-multi-page .visual-report-row-label {
+    width: 100% !important;
+    min-width: 0 !important;
     height: 100% !important;
     min-height: 0 !important;
     max-height: none !important;
     align-self: stretch !important;
+    padding-top: 0.25px !important;
+    padding-bottom: 0.25px !important;
   }
 
+  .visual-report-page.visual-report-multi-page .visual-report-row-label.visual-report-row-label-category {
+    display: flex !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-category-badge {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 0 1.5px !important;
+    font-size: 5.2px !important;
+  }
+
+  /*
+   * Este override evita que una regla antigua fuerce 20 columnas.
+   * Cada fila conserva exactamente la misma cantidad de columnas que
+   * usa la previsualizacion: 16, 17, 12, 7, etc.
+   */
   .visual-report-page.visual-report-multi-page .visual-report-cells {
+    width: 100% !important;
+    min-width: 0 !important;
     height: 100% !important;
     min-height: 0 !important;
     max-height: none !important;
     align-self: stretch !important;
+    display: grid !important;
+    grid-template-columns: repeat(var(--visual-report-columns, 20), minmax(0, 1fr)) !important;
+    gap: 0.55px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-sticker-cell {
+    width: 100% !important;
+    min-width: 0 !important;
     height: 100% !important;
     min-height: 0 !important;
     max-height: none !important;
     align-self: stretch !important;
+    padding: 0 !important;
+    border-radius: 2px !important;
+    border-width: 0.5px !important;
+    font-size: 7.5px !important;
+    line-height: 1 !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-footer {
