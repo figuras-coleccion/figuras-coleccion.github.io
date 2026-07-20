@@ -1,12 +1,21 @@
-export const FIGURITAS_EXPORT_PREFIX = '站疑'
-export const FIGURITAS_TRADE_PREFIX = '站救'
+let pakoPromise = null
+
+function loadUngzip() {
+  if (!pakoPromise) {
+    pakoPromise = import('../../vendor/pako-inflate.js').then(module => module.ungzip)
+  }
+  return pakoPromise
+}
+
+export const FIGURITAS_EXPORT_PREFIX = '⋋^'
+export const FIGURITAS_TRADE_PREFIX = '⋋~'
 export const FIGURITAS_EXPORT_BLOCKS = 3
 export const FIGURITAS_MASK_BYTES = 125
 export const PANINI_EXPORT_STICKER_COUNT = 994
-export const FIGURITAS_PROTOCOL_VERSION = 1
+export const FIGURITAS_PROTOCOL_VERSION = 2
 
-const PAKO_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js'
-let pakoPromise = null
+const LEGACY_EXPORT_PREFIX = '站疑'
+const LEGACY_TRADE_PREFIX = '站救'
 
 function normalizeBase64(value) {
   const compact = String(value || '')
@@ -37,30 +46,6 @@ function base64ToBytes(value) {
   return bytes
 }
 
-function loadPakoFallback() {
-  if (globalThis.pako?.ungzip) return Promise.resolve(globalThis.pako)
-  if (pakoPromise) return pakoPromise
-
-  pakoPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${PAKO_SCRIPT}"]`)
-    if (existing) {
-      existing.addEventListener('load', () => resolve(globalThis.pako), { once: true })
-      existing.addEventListener('error', () => reject(new Error('No se pudo cargar el descompresor GZIP.')), { once: true })
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = PAKO_SCRIPT
-    script.async = true
-    script.crossOrigin = 'anonymous'
-    script.onload = () => resolve(globalThis.pako)
-    script.onerror = () => reject(new Error('No se pudo cargar el descompresor GZIP.'))
-    document.head.appendChild(script)
-  })
-
-  return pakoPromise
-}
-
 async function gunzipBytes(bytes) {
   if ('DecompressionStream' in globalThis) {
     const stream = new Blob([bytes])
@@ -69,12 +54,8 @@ async function gunzipBytes(bytes) {
     return new Uint8Array(await new Response(stream).arrayBuffer())
   }
 
-  if (typeof document !== 'undefined') {
-    const pako = await loadPakoFallback()
-    if (pako?.ungzip) return pako.ungzip(bytes)
-  }
-
-  throw new Error('Este navegador no permite descomprimir el QR GZIP.')
+  const ungzip = await loadUngzip()
+  return ungzip(bytes)
 }
 
 async function inflateGzipBlock(value, label) {
@@ -113,7 +94,11 @@ function readEnabledIndices(bytes, maximumIndex = PANINI_EXPORT_STICKER_COUNT) {
 function getUnexpectedTrailingIndices(bytes) {
   const unexpected = []
 
-  for (let absoluteIndex = PANINI_EXPORT_STICKER_COUNT + 1; absoluteIndex <= FIGURITAS_MASK_BYTES * 8; absoluteIndex += 1) {
+  for (
+    let absoluteIndex = PANINI_EXPORT_STICKER_COUNT + 1;
+    absoluteIndex <= FIGURITAS_MASK_BYTES * 8;
+    absoluteIndex += 1
+  ) {
     const zeroBased = absoluteIndex - 1
     const byteIndex = Math.floor(zeroBased / 8)
     const bitIndex = zeroBased % 8
@@ -145,24 +130,43 @@ function validateOrderedCodes(orderedCodes) {
   return normalized
 }
 
+function normalizeProtocolPrefix(raw) {
+  if (raw.startsWith(FIGURITAS_EXPORT_PREFIX)) {
+    return { type: 'export', prefix: FIGURITAS_EXPORT_PREFIX, payload: raw.slice(FIGURITAS_EXPORT_PREFIX.length) }
+  }
+  if (raw.startsWith(FIGURITAS_TRADE_PREFIX)) {
+    return { type: 'trade', prefix: FIGURITAS_TRADE_PREFIX, payload: raw.slice(FIGURITAS_TRADE_PREFIX.length) }
+  }
+  if (raw.startsWith(LEGACY_EXPORT_PREFIX)) {
+    return { type: 'export', prefix: LEGACY_EXPORT_PREFIX, payload: raw.slice(LEGACY_EXPORT_PREFIX.length) }
+  }
+  if (raw.startsWith(LEGACY_TRADE_PREFIX)) {
+    return { type: 'trade', prefix: LEGACY_TRADE_PREFIX, payload: raw.slice(LEGACY_TRADE_PREFIX.length) }
+  }
+  return { type: 'unknown', prefix: '', payload: raw }
+}
+
 export function isFiguritasExportPayload(value) {
-  return String(value || '').trim().startsWith(FIGURITAS_EXPORT_PREFIX)
+  return normalizeProtocolPrefix(String(value || '').trim()).type === 'export'
 }
 
 export async function decodeFiguritasExportPayload(value, orderedCodes) {
   const raw = String(value || '').trim()
   if (!raw) throw new Error('El QR no contiene información.')
 
-  if (raw.startsWith(FIGURITAS_TRADE_PREFIX)) {
-    throw new Error('Este es el QR de intercambio de Figuritas. Para importar tu colección usa el QR de “Exportar álbum”.')
+  const protocol = normalizeProtocolPrefix(raw)
+
+  if (protocol.type === 'trade') {
+    throw new Error(
+      'Este es el QR de intercambio de Figuritas. Para importar tu colección usa el QR de “Exportar álbum”.'
+    )
   }
 
-  if (!raw.startsWith(FIGURITAS_EXPORT_PREFIX)) {
+  if (protocol.type !== 'export') {
     throw new Error('Este no es un QR de “Exportar álbum” de Figuritas.')
   }
 
-  const payload = raw.slice(FIGURITAS_EXPORT_PREFIX.length)
-  const blocks = payload.split(';')
+  const blocks = protocol.payload.split(';')
 
   if (blocks.length !== FIGURITAS_EXPORT_BLOCKS) {
     throw new Error(
@@ -252,6 +256,7 @@ export async function decodeFiguritasExportPayload(value, orderedCodes) {
     protocol: 'figuritas-export',
     protocolVersion: FIGURITAS_PROTOCOL_VERSION,
     prefix: FIGURITAS_EXPORT_PREFIX,
+    sourcePrefix: protocol.prefix,
     total: PANINI_EXPORT_STICKER_COUNT,
     owned: PANINI_EXPORT_STICKER_COUNT - missing.length,
     missingCount: missing.length,
