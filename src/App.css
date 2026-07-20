@@ -3446,7 +3446,7 @@ select:focus {
     max-height: 287mm !important;
     display: flex !important;
     flex-direction: column !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     padding: 0 !important;
@@ -3454,16 +3454,16 @@ select:focus {
 
   .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only {
     flex: 0 0 auto !important;
-    margin-bottom: 0.8mm !important;
+    margin-bottom: 0.65mm !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only > .visual-report-legend {
-    min-height: 3.8mm !important;
-    padding: 0.55mm 1.2mm !important;
+    min-height: 3.7mm !important;
+    padding: 0.45mm 1.2mm !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-legend span {
-    font-size: 6.5px !important;
+    font-size: 6.4px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-legend i {
@@ -3472,34 +3472,39 @@ select:focus {
   }
 
   /*
-   * El catalogo 3 Reyes produce exactamente 59 filas:
-   * 1 Estadios + 48 selecciones + 3 especiales + 4 Repechaje + 3 Escudos.
-   * La grilla reparte esas 59 filas en toda la altura disponible.
+   * 3 Reyes genera exactamente 59 filas:
+   * 1 Estadios + 48 paises + 3 especiales + 4 Repechaje + 3 Escudos.
+   *
+   * Se usa altura fisica fija por fila porque Chromium estaba
+   * colapsando las dos ultimas filas de Escudos al repartir con flex/fr.
    */
   .visual-report-page.visual-report-multi-page .visual-report-grid {
-    flex: 1 1 auto !important;
+    flex: 0 0 auto !important;
+    width: 100% !important;
     min-height: 0 !important;
     height: auto !important;
-    display: grid !important;
-    grid-template-rows: repeat(59, minmax(0, 1fr)) !important;
-    gap: 0.25px !important;
-    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.12mm !important;
+    overflow: visible !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-row,
   .visual-report-page.visual-report-multi-page .visual-report-row:nth-child(5n):not(:last-child) {
+    flex: 0 0 4.58mm !important;
     width: 100% !important;
     min-width: 0 !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    max-height: none !important;
+    height: 4.58mm !important;
+    min-height: 4.58mm !important;
+    max-height: 4.58mm !important;
     margin: 0 !important;
     padding: 0 !important;
     display: grid !important;
     grid-template-columns: 82px minmax(0, 1fr) !important;
     gap: 1.1px !important;
     align-items: stretch !important;
-    border-bottom-width: 0.45px !important;
+    border-bottom-width: 0.35px !important;
+    overflow: visible !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
@@ -3507,12 +3512,13 @@ select:focus {
   .visual-report-page.visual-report-multi-page .visual-report-row-label {
     width: 100% !important;
     min-width: 0 !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    max-height: none !important;
+    height: 4.58mm !important;
+    min-height: 4.58mm !important;
+    max-height: 4.58mm !important;
     align-self: stretch !important;
-    padding-top: 0.25px !important;
-    padding-bottom: 0.25px !important;
+    padding-top: 0.15px !important;
+    padding-bottom: 0.15px !important;
+    overflow: hidden !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-row-label.visual-report-row-label-category {
@@ -3528,34 +3534,38 @@ select:focus {
   }
 
   /*
-   * Este override evita que una regla antigua fuerce 20 columnas.
-   * Cada fila conserva exactamente la misma cantidad de columnas que
-   * usa la previsualizacion: 16, 17, 12, 7, etc.
+   * Todas las filas usan una cuadricula fija de 17 espacios.
+   * Asi cada celda conserva exactamente el mismo ancho y alineamiento.
+   * Las filas de 16 o menos figuras simplemente dejan espacios vacios
+   * al final, sin estirar sus celdas.
    */
   .visual-report-page.visual-report-multi-page .visual-report-cells {
     width: 100% !important;
     min-width: 0 !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    max-height: none !important;
+    height: 4.58mm !important;
+    min-height: 4.58mm !important;
+    max-height: 4.58mm !important;
     align-self: stretch !important;
     display: grid !important;
-    grid-template-columns: repeat(var(--visual-report-columns, 20), minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(17, minmax(0, 1fr)) !important;
+    grid-auto-flow: row !important;
     gap: 0.55px !important;
+    overflow: visible !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-sticker-cell {
     width: 100% !important;
     min-width: 0 !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    max-height: none !important;
+    height: 4.58mm !important;
+    min-height: 4.58mm !important;
+    max-height: 4.58mm !important;
     align-self: stretch !important;
     padding: 0 !important;
     border-radius: 2px !important;
     border-width: 0.5px !important;
-    font-size: 7.5px !important;
+    font-size: 7.4px !important;
     line-height: 1 !important;
+    overflow: hidden !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-footer {
