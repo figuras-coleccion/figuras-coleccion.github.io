@@ -3454,29 +3454,29 @@ select:focus {
 
   .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only {
     flex: 0 0 auto !important;
-    margin-bottom: 0.65mm !important;
+    margin-bottom: 0.4mm !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only > .visual-report-legend {
-    min-height: 3.7mm !important;
-    padding: 0.45mm 1.2mm !important;
+    min-height: 3.35mm !important;
+    padding: 0.3mm 1.1mm !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-legend span {
-    font-size: 6.4px !important;
+    font-size: 6.2px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-legend i {
-    width: 7px !important;
-    height: 7px !important;
+    width: 6.5px !important;
+    height: 6.5px !important;
   }
 
   /*
-   * 3 Reyes genera exactamente 59 filas:
+   * 3 Reyes genera 59 filas:
    * 1 Estadios + 48 paises + 3 especiales + 4 Repechaje + 3 Escudos.
    *
-   * Se usa altura fisica fija por fila porque Chromium estaba
-   * colapsando las dos ultimas filas de Escudos al repartir con flex/fr.
+   * Se reduce ligeramente la altura de cada fila para que Chromium
+   * no recorte la ultima fila T-33 a T-48 dentro del area A4 util.
    */
   .visual-report-page.visual-report-multi-page .visual-report-grid {
     flex: 0 0 auto !important;
@@ -3485,25 +3485,25 @@ select:focus {
     height: auto !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 0.12mm !important;
+    gap: 0.08mm !important;
     overflow: visible !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-row,
   .visual-report-page.visual-report-multi-page .visual-report-row:nth-child(5n):not(:last-child) {
-    flex: 0 0 4.58mm !important;
+    flex: 0 0 4.36mm !important;
     width: 100% !important;
     min-width: 0 !important;
-    height: 4.58mm !important;
-    min-height: 4.58mm !important;
-    max-height: 4.58mm !important;
+    height: 4.36mm !important;
+    min-height: 4.36mm !important;
+    max-height: 4.36mm !important;
     margin: 0 !important;
     padding: 0 !important;
     display: grid !important;
     grid-template-columns: 82px minmax(0, 1fr) !important;
     gap: 1.1px !important;
     align-items: stretch !important;
-    border-bottom-width: 0.35px !important;
+    border-bottom-width: 0.3px !important;
     overflow: visible !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
@@ -3512,12 +3512,12 @@ select:focus {
   .visual-report-page.visual-report-multi-page .visual-report-row-label {
     width: 100% !important;
     min-width: 0 !important;
-    height: 4.58mm !important;
-    min-height: 4.58mm !important;
-    max-height: 4.58mm !important;
+    height: 4.36mm !important;
+    min-height: 4.36mm !important;
+    max-height: 4.36mm !important;
     align-self: stretch !important;
-    padding-top: 0.15px !important;
-    padding-bottom: 0.15px !important;
+    padding-top: 0.1px !important;
+    padding-bottom: 0.1px !important;
     overflow: hidden !important;
   }
 
@@ -3530,40 +3530,39 @@ select:focus {
     height: 100% !important;
     min-height: 0 !important;
     padding: 0 1.5px !important;
-    font-size: 5.2px !important;
+    font-size: 5px !important;
   }
 
   /*
-   * Todas las filas usan una cuadricula fija de 17 espacios.
-   * Asi cada celda conserva exactamente el mismo ancho y alineamiento.
-   * Las filas de 16 o menos figuras simplemente dejan espacios vacios
-   * al final, sin estirar sus celdas.
+   * Todas las filas conservan una cuadricula fija de 17 espacios.
+   * Las filas con 16 o menos figuras dejan espacios vacios al final,
+   * sin estirar ni desalinear el ancho de las celdas.
    */
   .visual-report-page.visual-report-multi-page .visual-report-cells {
     width: 100% !important;
     min-width: 0 !important;
-    height: 4.58mm !important;
-    min-height: 4.58mm !important;
-    max-height: 4.58mm !important;
+    height: 4.36mm !important;
+    min-height: 4.36mm !important;
+    max-height: 4.36mm !important;
     align-self: stretch !important;
     display: grid !important;
     grid-template-columns: repeat(17, minmax(0, 1fr)) !important;
     grid-auto-flow: row !important;
-    gap: 0.55px !important;
+    gap: 0.5px !important;
     overflow: visible !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-sticker-cell {
     width: 100% !important;
     min-width: 0 !important;
-    height: 4.58mm !important;
-    min-height: 4.58mm !important;
-    max-height: 4.58mm !important;
+    height: 4.36mm !important;
+    min-height: 4.36mm !important;
+    max-height: 4.36mm !important;
     align-self: stretch !important;
     padding: 0 !important;
-    border-radius: 2px !important;
-    border-width: 0.5px !important;
-    font-size: 7.4px !important;
+    border-radius: 1.8px !important;
+    border-width: 0.45px !important;
+    font-size: 7.1px !important;
     line-height: 1 !important;
     overflow: hidden !important;
   }
