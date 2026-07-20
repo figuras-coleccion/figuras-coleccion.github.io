@@ -2,6 +2,7 @@ import { onValue, set } from 'firebase/database'
 import { db, ref, get, update } from './firebase'
 import { closeQrOverlay, normalizeSticker, showQrOverlay } from './qr-trade-ui'
 import { getAlbumChildPath, getStoredActiveAlbumId } from './albums/runtime'
+import { buildAbsoluteAppUrl, ALBUM_ROUTE } from './appRoutes.js'
 
 let ackOff = null
 
@@ -24,7 +25,7 @@ function waitAck(session) {
       key: `host-done-${session.id}`,
       title: 'Trueque confirmado',
       message: 'Los dos álbumes fueron actualizados.',
-      primary: { label: 'Ver álbum', primary: true, action: () => location.assign(`${location.origin}${import.meta.env.BASE_URL || '/'}album?trade=qr-success`) }
+      primary: { label: 'Ver álbum', primary: true, action: () => location.assign(buildAbsoluteAppUrl(ALBUM_ROUTE, '?trade=qr-success')) }
     })
   })
 }

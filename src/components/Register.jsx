@@ -290,7 +290,10 @@ export default function Register() {
   return (
     <div className="register-page">
       <div className="register-card">
-        <h1>⚽ FIGURAS COLECCIÓN</h1>
+        <h1 className="general-brand-title">
+          <span>⚽ FIGURAS</span>
+          <span>COLECCIÓN</span>
+        </h1>
         <p className="subtitle">Todos tus álbumes en un solo lugar</p>
 
         {screen === 'login' ? (

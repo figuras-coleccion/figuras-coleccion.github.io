@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "firebase": "^10.7.1",
+    "html5-qrcode": "^2.3.8",
+    "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.1"

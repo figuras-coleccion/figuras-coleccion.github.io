@@ -48,7 +48,11 @@ export async function buildTradeHistoryUpdates({
   partnerName = '',
   received = {},
   delivered = {},
-  completedAt = Date.now()
+  completedAt = Date.now(),
+  source = '',
+  status = 'completed',
+  hostConfirmation = '',
+  protocol = ''
 } = {}) {
   const safeUid = String(uid || '').trim()
   const safeTradeId = String(tradeId || '').trim()
@@ -71,7 +75,10 @@ export async function buildTradeHistoryUpdates({
     role,
     partnerId: String(partnerId || ''),
     partnerName: String(partnerName || ''),
-    status: 'completed',
+    source: String(source || mode || ''),
+    status: String(status || 'completed'),
+    hostConfirmation: String(hostConfirmation || ''),
+    protocol: String(protocol || ''),
     received: receivedQuantities,
     delivered: deliveredQuantities,
     receivedTotal,

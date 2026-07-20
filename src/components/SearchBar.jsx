@@ -4,7 +4,7 @@ import { useAlbum } from '../context/AlbumContext'
 export default function SearchBar({ onSearch }) {
   const { activeAlbum } = useAlbum()
   const [query, setQuery] = useState('')
-  const examples = activeAlbum.publisher === '3 Reyes' ? '63, E1, T1' : 'ARG5, FWC1, 00'
+  const examples = activeAlbum.publisher === '3 Reyes' ? '63, E1, T-1' : 'ARG5, FWC1, 00'
 
   const handleSubmit = (e) => {
     e.preventDefault()

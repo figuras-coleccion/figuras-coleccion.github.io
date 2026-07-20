@@ -1,5 +1,6 @@
 import { auth, db, ref, get, update } from './firebase'
 import { getAlbumChildPath, getStoredActiveAlbumId } from './albums/runtime'
+import { buildAbsoluteAppUrl, ALBUM_ROUTE } from './appRoutes.js'
 
 const state = {
   partnerId: '',
@@ -339,7 +340,7 @@ async function confirmTrade() {
 
     await update(ref(db), changes)
     showResult(true, 'Trueque QR exitoso', `${received} recibida${received === 1 ? '' : 's'} · ${delivered} entregada${delivered === 1 ? '' : 's'}. Figuritas actualizadas.`)
-    window.setTimeout(() => window.location.assign(`${window.location.origin}/panini2026/album?trade=success`), 1400)
+    window.setTimeout(() => window.location.assign(buildAbsoluteAppUrl(ALBUM_ROUTE, '?trade=success')), 1400)
   } catch (error) {
     console.error('Error confirmando trueque QR:', error)
     state.processing = false

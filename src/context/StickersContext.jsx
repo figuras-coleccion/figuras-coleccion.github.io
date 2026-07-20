@@ -3,14 +3,16 @@ import { useUser } from './UserContext'
 import { useAlbum } from './AlbumContext'
 import { db, ref, get, update } from '../firebase'
 import { getAllStickers } from '../data/stickersData'
-import { DEFAULT_ALBUM_ID } from '../albums/constants'
+import { DEFAULT_ALBUM_ID, THREE_REYES_ALBUM_ID } from '../albums/constants'
 import { getAlbumChildPath } from '../albums/runtime'
+import { buildTradeHistoryUpdates, createManualTradeId } from '../trade-history'
 
 const StickersContext = createContext()
 
 const STANDARD_STICKERS = getAllStickers()
 const STANDARD_CODES = STANDARD_STICKERS.map(s => s.code)
 const STANDARD_CODE_SET = new Set(STANDARD_CODES)
+const STANDARD_CODE_INDEX = new Map(STANDARD_CODES.map((code, index) => [code, index]))
 
 const EMPTY_STICKERS = {}
 STANDARD_STICKERS.forEach(s => {
@@ -31,7 +33,7 @@ function stickersAreEqual(a = {}, b = {}) {
 }
 
 function getOrderedIndex(code) {
-  return STANDARD_CODE_SET.has(code) ? STANDARD_CODES.indexOf(code) : Number.MAX_SAFE_INTEGER
+  return STANDARD_CODE_INDEX.has(code) ? STANDARD_CODE_INDEX.get(code) : Number.MAX_SAFE_INTEGER
 }
 
 function localBackupKey(uid, albumId) {
@@ -40,15 +42,60 @@ function localBackupKey(uid, albumId) {
     : `panini_stickers_${uid}_${albumId}`
 }
 
-function mergeCloudStickers(data = {}) {
+function normalizeCodeForCatalog(code, catalog) {
+  const normalized = String(code || '').trim().toUpperCase()
+  return catalog?.normalizeStickerCode ? catalog.normalizeStickerCode(normalized) : normalized
+}
+
+function isRemovedLegacyCode(code, catalog) {
+  return catalog?.id === THREE_REYES_ALBUM_ID && String(code || '').trim().toUpperCase() === '0'
+}
+
+function mergeStickerStates(previous = {}, incoming = {}) {
+  const left = normalizeSticker(previous)
+  const right = normalizeSticker(incoming)
+  return {
+    owned: left.owned || right.owned,
+    duplicates: Math.max(left.duplicates, right.duplicates)
+  }
+}
+
+function mergeCloudStickers(data = {}, catalog) {
   const merged = { ...EMPTY_STICKERS }
 
   Object.entries(data).forEach(([code, value]) => {
     if (!code || typeof value !== 'object' || value === null) return
-    merged[code] = normalizeSticker(value)
+    if (isRemovedLegacyCode(code, catalog)) return
+    const normalizedCode = normalizeCodeForCatalog(code, catalog)
+    if (!normalizedCode) return
+    merged[normalizedCode] = mergeStickerStates(merged[normalizedCode], value)
   })
 
   return merged
+}
+
+function buildCatalogMigrationUpdates(data = {}, catalog, stickersPath = '') {
+  if (!stickersPath) return {}
+
+  const merged = mergeCloudStickers(data, catalog)
+  const updates = {}
+
+  Object.entries(data).forEach(([code, value]) => {
+    if (!code || typeof value !== 'object' || value === null) return
+
+    if (isRemovedLegacyCode(code, catalog)) {
+      updates[`${stickersPath}/${code}`] = null
+      return
+    }
+
+    const normalizedCode = normalizeCodeForCatalog(code, catalog)
+    if (!normalizedCode || normalizedCode === code) return
+
+    updates[`${stickersPath}/${code}`] = null
+    updates[`${stickersPath}/${normalizedCode}`] = merged[normalizedCode]
+  })
+
+  return updates
 }
 
 export function StickersProvider({ children }) {
@@ -72,9 +119,14 @@ export function StickersProvider({ children }) {
       try {
         const snapshot = await get(ref(db, stickersPath))
         if (snapshot.exists()) {
-          const cloudStickers = mergeCloudStickers(snapshot.val())
+          const rawCloudStickers = snapshot.val() || {}
+          const cloudStickers = mergeCloudStickers(rawCloudStickers, activeAlbum)
           setStickers(cloudStickers)
           setSavedStickers(cloudStickers)
+          const migrationUpdates = buildCatalogMigrationUpdates(rawCloudStickers, activeAlbum, stickersPath)
+          if (Object.keys(migrationUpdates).length > 0) {
+            await update(ref(db), migrationUpdates)
+          }
         } else {
           setStickers({ ...EMPTY_STICKERS })
           setSavedStickers({ ...EMPTY_STICKERS })
@@ -84,7 +136,7 @@ export function StickersProvider({ children }) {
         try {
           const saved = localStorage.getItem(localBackupKey(user.id, activeAlbumId))
           if (saved) {
-            const localBackup = mergeCloudStickers(JSON.parse(saved))
+            const localBackup = mergeCloudStickers(JSON.parse(saved), activeAlbum)
             setStickers(localBackup)
             setSavedStickers({ ...EMPTY_STICKERS })
           } else {
@@ -101,7 +153,7 @@ export function StickersProvider({ children }) {
     }
 
     loadStickers()
-  }, [activeAlbumId, stickersPath, user])
+  }, [activeAlbum, activeAlbumId, stickersPath, user])
 
   useEffect(() => {
     if (user) {
@@ -110,12 +162,12 @@ export function StickersProvider({ children }) {
   }, [activeAlbumId, stickers, user])
 
   const isStickerLocked = useCallback((code) => {
-    const normalizedCode = String(code || '').trim().toUpperCase()
+    const normalizedCode = normalizeCodeForCatalog(code, activeAlbum)
     return Boolean(savedStickers[normalizedCode]?.owned)
-  }, [savedStickers])
+  }, [activeAlbum, savedStickers])
 
   const updateStickerLocal = useCallback((code, updates) => {
-    const normalizedCode = String(code || '').trim().toUpperCase()
+    const normalizedCode = normalizeCodeForCatalog(code, activeAlbum)
     if (!normalizedCode) return
 
     setStickers(prev => {
@@ -158,13 +210,13 @@ export function StickersProvider({ children }) {
         [normalizedCode]: nextSticker
       }
     })
-  }, [savedStickers])
+  }, [activeAlbum, savedStickers])
 
   const saveStickersByCodes = useCallback(async (codes = []) => {
     if (!user) return false
 
     const normalizedCodes = Array.from(new Set(
-      codes.map(code => String(code || '').trim().toUpperCase()).filter(Boolean)
+      codes.map(code => normalizeCodeForCatalog(code, activeAlbum)).filter(Boolean)
     ))
 
     if (normalizedCodes.length === 0) return false
@@ -193,7 +245,7 @@ export function StickersProvider({ children }) {
       alert('Error al guardar esta página. Tus cambios se conservaron localmente.')
       return false
     }
-  }, [stickers, stickersPath, user])
+  }, [activeAlbum, stickers, stickersPath, user])
 
   const saveToCloud = useCallback(async () => {
     if (!user) return false
@@ -270,7 +322,7 @@ export function StickersProvider({ children }) {
       throw new Error('Debes iniciar sesión para eliminar una tarjeta guardada.')
     }
 
-    const normalizedCode = String(code || '').trim().toUpperCase()
+    const normalizedCode = normalizeCodeForCatalog(code, activeAlbum)
     if (!normalizedCode) return false
 
     const removedSticker = { owned: false, duplicates: 0 }
@@ -297,18 +349,22 @@ export function StickersProvider({ children }) {
 
     setLastSaved(Date.now())
     return true
-  }, [stickersPath, user])
+  }, [activeAlbum, stickersPath, user])
 
-  const applyManualTrade = useCallback(async ({ receivedCodes = [], deliveredCodes = [] } = {}) => {
+  const applyManualTrade = useCallback(async ({
+    receivedCodes = [],
+    deliveredCodes = [],
+    history = null
+  } = {}) => {
     if (!user) {
       throw new Error('Debes iniciar sesión para registrar un intercambio.')
     }
 
     const received = Array.from(new Set(
-      receivedCodes.map(code => String(code || '').trim().toUpperCase()).filter(Boolean)
+      receivedCodes.map(code => normalizeCodeForCatalog(code, activeAlbum)).filter(Boolean)
     ))
     const delivered = Array.from(new Set(
-      deliveredCodes.map(code => String(code || '').trim().toUpperCase()).filter(Boolean)
+      deliveredCodes.map(code => normalizeCodeForCatalog(code, activeAlbum)).filter(Boolean)
     ))
 
     const nextByCode = {}
@@ -341,6 +397,28 @@ export function StickersProvider({ children }) {
       updates[`${stickersPath}/${code}`] = nextByCode[code]
     })
 
+    if (history) {
+      const tradeId = createManualTradeId(user.id)
+      if (!tradeId) throw new Error('No se pudo preparar el historial del intercambio.')
+
+      const historyUpdates = await buildTradeHistoryUpdates({
+        uid: user.id,
+        tradeId,
+        mode: history.mode || 'manual',
+        role: history.role || 'self',
+        partnerId: history.partnerId || '',
+        partnerName: history.partnerName || '',
+        received: appliedReceived,
+        delivered: appliedDelivered,
+        source: history.source || history.mode || 'manual',
+        status: history.status || 'completed',
+        hostConfirmation: history.hostConfirmation || '',
+        protocol: history.protocol || ''
+      })
+
+      Object.assign(updates, historyUpdates)
+    }
+
     await update(ref(db), updates)
 
     setStickers(previous => ({ ...previous, ...nextByCode }))
@@ -357,7 +435,25 @@ export function StickersProvider({ children }) {
       received: appliedReceived,
       delivered: appliedDelivered
     }
-  }, [stickers, stickersPath, user])
+  }, [activeAlbum, stickers, stickersPath, user])
+
+  const replaceStickersFromExternalImport = useCallback((nextStickers = {}) => {
+    if (!user) return false
+
+    const merged = mergeCloudStickers(nextStickers, activeAlbum)
+    setStickers(merged)
+    setSavedStickers(merged)
+    setPendingChanges({})
+    setLastSaved(Date.now())
+
+    try {
+      localStorage.setItem(localBackupKey(user.id, activeAlbum.id), JSON.stringify(merged))
+    } catch (storageError) {
+      console.warn('No se pudo actualizar el respaldo local de la importación:', storageError)
+    }
+
+    return true
+  }, [activeAlbum, user])
 
   const getOwnedStickers = useCallback(() => {
     return STANDARD_CODES.filter(code => savedStickers[code]?.owned)
@@ -393,6 +489,7 @@ export function StickersProvider({ children }) {
       updateStickerLocal,
       deleteSavedSticker,
       applyManualTrade,
+      replaceStickersFromExternalImport,
       saveStickersByCodes,
       saveToCloud,
       saveTeamPage,

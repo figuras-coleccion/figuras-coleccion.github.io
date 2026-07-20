@@ -39,17 +39,34 @@ export function getAlbumGroup(groupId) {
   )) || null
 }
 
-export function getStickerDisplayNumber(code = '') {
-  const normalized = String(code).trim().toUpperCase().replace(/^(E|T)-(?=\d)/, '$1')
+export function normalizeStickerCodeForActiveAlbum(code = '') {
+  const normalized = String(code || '').trim().toUpperCase()
+  return activeAlbumCatalog.normalizeStickerCode
+    ? activeAlbumCatalog.normalizeStickerCode(normalized)
+    : normalized
+}
+
+export function formatStickerDisplayCode(normalizedCode = '', albumId = activeAlbumCatalog.id) {
+  const normalized = String(normalizedCode || '').trim().toUpperCase()
   if (normalized === '00' || normalized === '0') return normalized
   if (/^\d+$/.test(normalized)) return String(Number(normalized))
+
+  // Panini muestra solo el número dentro de cada figura (FWC1 → 1, USA4 → 4).
+  // Otros álbumes pueden usar letras como parte esencial del código visual
+  // (E1–E66 y T-1–T-48 en 3 Reyes), por lo que deben conservarse completas.
+  if (albumId !== 'panini-world-cup-2026') return normalized
 
   const match = normalized.match(/(\d+)$/)
   return match ? String(Number(match[1])) : normalized
 }
 
+export function getStickerDisplayNumber(code = '') {
+  const normalized = normalizeStickerCodeForActiveAlbum(code)
+  return formatStickerDisplayCode(normalized, activeAlbumCatalog.id)
+}
+
 export function isIrregularStickerCode(code = '') {
-  const normalized = String(code).trim().toUpperCase().replace(/^(E|T)-(?=\d)/, '$1')
+  const normalized = normalizeStickerCodeForActiveAlbum(code)
   return activeAlbumCatalog.irregularCodeSet.has(normalized)
 }
 

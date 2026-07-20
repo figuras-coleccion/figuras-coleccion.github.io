@@ -3,6 +3,7 @@ import { onValue } from 'firebase/database'
 import { auth, db, ref, get, update } from './firebase'
 import { closeQrOverlay, formatCodes, formatQuantities, normalizeSticker, showQrOverlay } from './qr-trade-ui'
 import { getAlbumChildPath, getStoredActiveAlbumId } from './albums/runtime'
+import { buildAbsoluteAppUrl, ALBUM_ROUTE } from './appRoutes.js'
 
 let uid = ''
 let busy = false
@@ -69,7 +70,7 @@ async function apply(session, decision) {
     primary: {
       label: 'Ver álbum',
       primary: true,
-      action: () => location.assign(`${location.origin}${import.meta.env.BASE_URL || '/'}album?trade=qr-success`)
+      action: () => location.assign(buildAbsoluteAppUrl(ALBUM_ROUTE, '?trade=qr-success'))
     }
   })
 }

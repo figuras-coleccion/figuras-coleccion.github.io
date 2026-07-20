@@ -1,35 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Html5Qrcode } from 'html5-qrcode'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useUser } from '../context/UserContext'
 import { useStickers } from '../context/StickersContext'
 import { useEditLock } from '../context/EditLockContext'
 import { db, ref, get } from '../firebase'
 import { buildAlbumGroups, getStickerDisplayNumber, isIrregularStickerCode } from '../data/albumGroups'
+import { albumRoute } from '../appRoutes'
+import LocalQrCode from './LocalQrCode'
 
-const QR_SCANNER_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js'
-let qrScannerLibraryPromise = null
-
-function ensureQrScannerLibrary() {
-  if (window.Html5Qrcode) return Promise.resolve(window.Html5Qrcode)
-  if (qrScannerLibraryPromise) return qrScannerLibraryPromise
-
-  qrScannerLibraryPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${QR_SCANNER_SCRIPT}"]`)
-    if (existing) {
-      existing.addEventListener('load', () => resolve(window.Html5Qrcode), { once: true })
-      existing.addEventListener('error', () => reject(new Error('No se pudo cargar el lector QR.')), { once: true })
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = QR_SCANNER_SCRIPT
-    script.async = true
-    script.onload = () => resolve(window.Html5Qrcode)
-    script.onerror = () => reject(new Error('No se pudo cargar el lector QR.'))
-    document.head.appendChild(script)
-  })
-
-  return qrScannerLibraryPromise
+async function ensureQrScannerLibrary() {
+  return Html5Qrcode
 }
 
 function parseQrUserId(rawValue) {
@@ -159,10 +140,6 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
     const basePath = import.meta.env.BASE_URL || '/'
     return `${window.location.origin}${basePath}trade?qrUser=${encodeURIComponent(user.id)}`
   }, [user.id])
-  const qrImageUrl = useMemo(
-    () => `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=14&data=${encodeURIComponent(qrPayload)}`,
-    [qrPayload]
-  )
 
   const loadPartnerMatch = useCallback(async (partnerId, { updateUrl = false } = {}) => {
     const cleanPartnerId = String(partnerId || '').trim()
@@ -453,7 +430,7 @@ function ManualTradePanel({ stickers, orderedCodes, editingLocked, applyManualTr
       })
 
       window.setTimeout(() => {
-        navigate('/album?trade=success', { replace: true })
+        navigate(albumRoute('?trade=success'), { replace: true })
       }, 1700)
     } catch (error) {
       console.error('Error applying manual trade:', error)

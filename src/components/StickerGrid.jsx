@@ -134,6 +134,12 @@ function StickerToken({ sticker, onUpdate, onRemove, editingLocked }) {
   }
 
   const irregular = isIrregularStickerCode(code)
+  const displayNumber = getStickerDisplayNumber(code)
+  const displayLengthClass = displayNumber.length >= 4
+    ? 'sticker-number-long'
+    : displayNumber.length >= 3
+      ? 'sticker-number-compact'
+      : ''
   const stateLabel = editingLocked
     ? 'Edición bloqueada.'
     : !owned
@@ -158,7 +164,7 @@ function StickerToken({ sticker, onUpdate, onRemove, editingLocked }) {
           aria-label={`${code}. ${stateLabel}`}
           title={`${code} · ${stateLabel}`}
         >
-          <span className="sticker-number">{getStickerDisplayNumber(code)}</span>
+          <span className={`sticker-number ${displayLengthClass}`.trim()}>{displayNumber}</span>
           {pending && <span className="sticker-pending-dot" title="Sincronizando" />}
           {feedback && <span className="sticker-feedback">{feedback}</span>}
         </button>

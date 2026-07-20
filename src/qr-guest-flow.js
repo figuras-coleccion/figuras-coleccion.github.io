@@ -2,6 +2,7 @@ import { onValue, push, set } from 'firebase/database'
 import { auth, db, ref, get, update } from './firebase'
 import { closeQrOverlay, formatCodes, formatQuantities, normalizeSticker, showQrOverlay, sumQuantities } from './qr-trade-ui'
 import { getAlbumChildPath, getStoredActiveAlbumId, isProfileUsingAlbum } from './albums/runtime'
+import { buildAbsoluteAppUrl, ALBUM_ROUTE } from './appRoutes.js'
 
 let busy = false
 let off = null
@@ -108,7 +109,7 @@ async function applyDecision(session, decision) {
     primary: {
       label: 'Ver álbum',
       primary: true,
-      action: () => location.assign(`${location.origin}${import.meta.env.BASE_URL || '/'}album?trade=qr-success`)
+      action: () => location.assign(buildAbsoluteAppUrl(ALBUM_ROUTE, '?trade=qr-success'))
     }
   })
 }

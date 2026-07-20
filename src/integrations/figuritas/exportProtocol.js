@@ -9,6 +9,7 @@ function loadUngzip() {
 
 export const FIGURITAS_EXPORT_PREFIX = '⋋^'
 export const FIGURITAS_TRADE_PREFIX = '⋋~'
+export const FIGURITAS_TRADE_CONFIRMATION_PREFIX = `;${FIGURITAS_TRADE_PREFIX}`
 export const FIGURITAS_EXPORT_BLOCKS = 3
 export const FIGURITAS_MASK_BYTES = 125
 export const PANINI_EXPORT_STICKER_COUNT = 994
@@ -46,6 +47,15 @@ function base64ToBytes(value) {
   return bytes
 }
 
+function bytesToBase64(bytes) {
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize))
+  }
+  return btoa(binary)
+}
+
 async function gunzipBytes(bytes) {
   if ('DecompressionStream' in globalThis) {
     const stream = new Blob([bytes])
@@ -58,6 +68,17 @@ async function gunzipBytes(bytes) {
   return ungzip(bytes)
 }
 
+async function gzipBytes(bytes) {
+  if ('CompressionStream' in globalThis) {
+    const stream = new Blob([bytes])
+      .stream()
+      .pipeThrough(new CompressionStream('gzip'))
+    return new Uint8Array(await new Response(stream).arrayBuffer())
+  }
+
+  throw new Error('Este navegador no puede comprimir el QR final de Figuritas.')
+}
+
 async function inflateGzipBlock(value, label) {
   try {
     return await gunzipBytes(base64ToBytes(value))
@@ -67,12 +88,32 @@ async function inflateGzipBlock(value, label) {
   }
 }
 
-function assertMaskLength(bytes, label) {
-  if (!(bytes instanceof Uint8Array) || bytes.length !== FIGURITAS_MASK_BYTES) {
-    throw new Error(
-      `El bloque de ${label} debe contener ${FIGURITAS_MASK_BYTES} bytes y contiene ${bytes?.length ?? 0}.`
-    )
+async function deflateGzipBlock(bytes, label) {
+  try {
+    return bytesToBase64(await gzipBytes(bytes))
+  } catch (error) {
+    console.error(`No se pudo comprimir ${label}:`, error)
+    throw new Error(`No se pudo comprimir el bloque de ${label}.`)
   }
+}
+
+function normalizeMaskLength(bytes, label, { allowShort = false } = {}) {
+  if (!(bytes instanceof Uint8Array)) {
+    throw new Error(`El bloque de ${label} no contiene bytes válidos.`)
+  }
+
+  if (bytes.length === FIGURITAS_MASK_BYTES) return bytes
+
+  if (allowShort && bytes.length >= 123 && bytes.length < FIGURITAS_MASK_BYTES) {
+    const padded = new Uint8Array(FIGURITAS_MASK_BYTES)
+    padded.set(bytes, 0)
+    return padded
+  }
+
+  throw new Error(
+    `El bloque de ${label} debe contener ${FIGURITAS_MASK_BYTES} bytes` +
+    `${allowShort ? ' o una variante compatible de 123 a 124 bytes' : ''} y contiene ${bytes.length}.`
+  )
 }
 
 function readEnabledIndices(bytes, maximumIndex = PANINI_EXPORT_STICKER_COUNT) {
@@ -89,6 +130,23 @@ function readEnabledIndices(bytes, maximumIndex = PANINI_EXPORT_STICKER_COUNT) {
   }
 
   return indices
+}
+
+function createMaskFromIndices(indices = []) {
+  const bytes = new Uint8Array(FIGURITAS_MASK_BYTES)
+
+  indices.forEach(index => {
+    if (!Number.isInteger(index) || index < 1 || index > PANINI_EXPORT_STICKER_COUNT) {
+      throw new Error(`La posición ${index} está fuera del catálogo Panini.`)
+    }
+
+    const zeroBased = index - 1
+    const byteIndex = Math.floor(zeroBased / 8)
+    const bitIndex = zeroBased % 8
+    bytes[byteIndex] |= (1 << bitIndex)
+  })
+
+  return bytes
 }
 
 function getUnexpectedTrailingIndices(bytes) {
@@ -130,20 +188,61 @@ function validateOrderedCodes(orderedCodes) {
   return normalized
 }
 
+function codesToIndices(codes = [], orderedCodes) {
+  const normalizedCodes = validateOrderedCodes(orderedCodes)
+  const indexByCode = new Map(normalizedCodes.map((code, index) => [code, index + 1]))
+
+  return Array.from(new Set(
+    codes.map(code => String(code || '').trim().toUpperCase()).filter(Boolean)
+  )).map(code => {
+    const index = indexByCode.get(code)
+    if (!index) throw new Error(`${code} no existe en el catálogo Panini.`)
+    return index
+  })
+}
+
+export function classifyFiguritasPayload(value) {
+  const raw = String(value || '').trim()
+  const isConfirmation = raw.startsWith(';')
+  const candidate = isConfirmation ? raw.slice(1) : raw
+
+  if (candidate.startsWith(FIGURITAS_EXPORT_PREFIX)) {
+    return {
+      type: 'export',
+      prefix: FIGURITAS_EXPORT_PREFIX,
+      isConfirmation: false,
+      payload: candidate.slice(FIGURITAS_EXPORT_PREFIX.length)
+    }
+  }
+  if (candidate.startsWith(FIGURITAS_TRADE_PREFIX)) {
+    return {
+      type: isConfirmation ? 'trade-confirmation' : 'trade',
+      prefix: FIGURITAS_TRADE_PREFIX,
+      isConfirmation,
+      payload: candidate.slice(FIGURITAS_TRADE_PREFIX.length)
+    }
+  }
+  if (candidate.startsWith(LEGACY_EXPORT_PREFIX)) {
+    return {
+      type: 'export',
+      prefix: LEGACY_EXPORT_PREFIX,
+      isConfirmation: false,
+      payload: candidate.slice(LEGACY_EXPORT_PREFIX.length)
+    }
+  }
+  if (candidate.startsWith(LEGACY_TRADE_PREFIX)) {
+    return {
+      type: isConfirmation ? 'trade-confirmation' : 'trade',
+      prefix: LEGACY_TRADE_PREFIX,
+      isConfirmation,
+      payload: candidate.slice(LEGACY_TRADE_PREFIX.length)
+    }
+  }
+  return { type: 'unknown', prefix: '', isConfirmation: false, payload: candidate }
+}
+
 function normalizeProtocolPrefix(raw) {
-  if (raw.startsWith(FIGURITAS_EXPORT_PREFIX)) {
-    return { type: 'export', prefix: FIGURITAS_EXPORT_PREFIX, payload: raw.slice(FIGURITAS_EXPORT_PREFIX.length) }
-  }
-  if (raw.startsWith(FIGURITAS_TRADE_PREFIX)) {
-    return { type: 'trade', prefix: FIGURITAS_TRADE_PREFIX, payload: raw.slice(FIGURITAS_TRADE_PREFIX.length) }
-  }
-  if (raw.startsWith(LEGACY_EXPORT_PREFIX)) {
-    return { type: 'export', prefix: LEGACY_EXPORT_PREFIX, payload: raw.slice(LEGACY_EXPORT_PREFIX.length) }
-  }
-  if (raw.startsWith(LEGACY_TRADE_PREFIX)) {
-    return { type: 'trade', prefix: LEGACY_TRADE_PREFIX, payload: raw.slice(LEGACY_TRADE_PREFIX.length) }
-  }
-  return { type: 'unknown', prefix: '', payload: raw }
+  return classifyFiguritasPayload(raw)
 }
 
 export function isFiguritasExportPayload(value) {
@@ -181,8 +280,8 @@ export async function decodeFiguritasExportPayload(value, orderedCodes) {
     inflateGzipBlock(blocks[2], 'cantidades')
   ])
 
-  assertMaskLength(missingMask, 'faltantes')
-  assertMaskLength(repeatedMask, 'repetidas')
+  normalizeMaskLength(missingMask, 'faltantes')
+  normalizeMaskLength(repeatedMask, 'repetidas')
 
   const unexpectedBits = [
     ...getUnexpectedTrailingIndices(missingMask),
@@ -266,4 +365,131 @@ export async function decodeFiguritasExportPayload(value, orderedCodes) {
     repeated,
     stickers
   }
+}
+
+export async function decodeFiguritasTradePayload(value, orderedCodes) {
+  const raw = String(value || '').trim()
+  if (!raw) throw new Error('El QR no contiene información.')
+
+  const protocol = normalizeProtocolPrefix(raw)
+  if (protocol.type === 'trade-confirmation') {
+    throw new Error(
+      'Este es el QR final de actualización del anfitrión. Para iniciar el trueque usa el QR inicial de Figuritas.'
+    )
+  }
+  if (protocol.type !== 'trade') {
+    throw new Error('Este no es un QR inicial de intercambio de Figuritas.')
+  }
+
+  const blocks = protocol.payload.split(';')
+  if (blocks.length !== 2) {
+    throw new Error(`El QR de intercambio debe contener 2 bloques y contiene ${blocks.length}.`)
+  }
+
+  const normalizedCodes = validateOrderedCodes(orderedCodes)
+  const [firstRawMask, secondRawMask] = await Promise.all([
+    inflateGzipBlock(blocks[0], 'bloque 1'),
+    inflateGzipBlock(blocks[1], 'bloque 2')
+  ])
+  const firstMask = normalizeMaskLength(firstRawMask, 'bloque 1', { allowShort: true })
+  const secondMask = normalizeMaskLength(secondRawMask, 'bloque 2', { allowShort: true })
+
+  const unexpectedBits = [
+    ...getUnexpectedTrailingIndices(firstMask),
+    ...getUnexpectedTrailingIndices(secondMask)
+  ]
+
+  if (unexpectedBits.length > 0) {
+    throw new Error(
+      `El QR usa posiciones fuera del catálogo Panini: ${Array.from(new Set(unexpectedBits)).join(', ')}.`
+    )
+  }
+
+  const firstIndices = readEnabledIndices(firstMask)
+  const secondIndices = readEnabledIndices(secondMask)
+
+  return {
+    protocol: 'figuritas-trade',
+    protocolVersion: FIGURITAS_PROTOCOL_VERSION,
+    prefix: FIGURITAS_TRADE_PREFIX,
+    sourcePrefix: protocol.prefix,
+    total: PANINI_EXPORT_STICKER_COUNT,
+    block1: firstIndices.map(index => normalizedCodes[index - 1]),
+    block2: secondIndices.map(index => normalizedCodes[index - 1]),
+    hostMissing: firstIndices.map(index => normalizedCodes[index - 1]),
+    hostRepeated: secondIndices.map(index => normalizedCodes[index - 1])
+  }
+}
+
+export async function decodeFiguritasTradeConfirmationPayload(value, orderedCodes) {
+  const raw = String(value || '').trim()
+  if (!raw) throw new Error('El QR no contiene información.')
+
+  const protocol = normalizeProtocolPrefix(raw)
+  if (protocol.type !== 'trade-confirmation') {
+    throw new Error('Este no es un QR final de actualización de Figuritas.')
+  }
+
+  const blocks = protocol.payload.split(';')
+  if (blocks.length !== 2) {
+    throw new Error(`El QR final debe contener 2 bloques y contiene ${blocks.length}.`)
+  }
+
+  const normalizedCodes = validateOrderedCodes(orderedCodes)
+  const [hostDeliversRawMask, hostReceivesRawMask] = await Promise.all([
+    inflateGzipBlock(blocks[0], 'figuras que entrega el anfitrión'),
+    inflateGzipBlock(blocks[1], 'figuras que recibe el anfitrión')
+  ])
+  const hostDeliversMask = normalizeMaskLength(
+    hostDeliversRawMask,
+    'figuras que entrega el anfitrión',
+    { allowShort: true }
+  )
+  const hostReceivesMask = normalizeMaskLength(
+    hostReceivesRawMask,
+    'figuras que recibe el anfitrión',
+    { allowShort: true }
+  )
+
+  const unexpectedBits = [
+    ...getUnexpectedTrailingIndices(hostDeliversMask),
+    ...getUnexpectedTrailingIndices(hostReceivesMask)
+  ]
+  if (unexpectedBits.length > 0) {
+    throw new Error(
+      `El QR usa posiciones fuera del catálogo Panini: ${Array.from(new Set(unexpectedBits)).join(', ')}.`
+    )
+  }
+
+  const hostDeliversIndices = readEnabledIndices(hostDeliversMask)
+  const hostReceivesIndices = readEnabledIndices(hostReceivesMask)
+
+  return {
+    protocol: 'figuritas-trade-confirmation',
+    protocolVersion: FIGURITAS_PROTOCOL_VERSION,
+    prefix: FIGURITAS_TRADE_CONFIRMATION_PREFIX,
+    hostDelivers: hostDeliversIndices.map(index => normalizedCodes[index - 1]),
+    hostReceives: hostReceivesIndices.map(index => normalizedCodes[index - 1])
+  }
+}
+
+export async function encodeFiguritasTradeConfirmationPayload({
+  hostDeliversCodes = [],
+  hostReceivesCodes = []
+} = {}, orderedCodes) {
+  const hostDeliversIndices = codesToIndices(hostDeliversCodes, orderedCodes)
+  const hostReceivesIndices = codesToIndices(hostReceivesCodes, orderedCodes)
+
+  const [hostDeliversBlock, hostReceivesBlock] = await Promise.all([
+    deflateGzipBlock(
+      createMaskFromIndices(hostDeliversIndices),
+      'figuras que entrega el anfitrión'
+    ),
+    deflateGzipBlock(
+      createMaskFromIndices(hostReceivesIndices),
+      'figuras que recibe el anfitrión'
+    )
+  ])
+
+  return `${FIGURITAS_TRADE_CONFIRMATION_PREFIX}${hostDeliversBlock};${hostReceivesBlock}`
 }

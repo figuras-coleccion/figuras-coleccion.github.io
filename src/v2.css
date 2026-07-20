@@ -128,9 +128,21 @@ textarea {
 }
 
 .sticker-number {
+  max-width: 100%;
   font-size: clamp(12.8px, 3.36vw, 19.2px);
   font-weight: 500;
   line-height: 1;
+  white-space: nowrap;
+}
+
+.sticker-number.sticker-number-compact {
+  font-size: clamp(10.5px, 2.75vw, 16px);
+  letter-spacing: -0.02em;
+}
+
+.sticker-number.sticker-number-long {
+  font-size: clamp(9px, 2.35vw, 14px);
+  letter-spacing: -0.04em;
 }
 
 .sticker-item.owned .sticker-number {

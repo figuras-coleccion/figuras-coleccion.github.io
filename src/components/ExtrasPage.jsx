@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useStickers } from '../context/StickersContext'
 import { getAllStickers } from '../data/stickersData'
+import { normalizeStickerCodeForActiveAlbum } from '../data/albumGroups'
 import DeleteStickerConfirmation from './DeleteStickerConfirmation'
 
 const STANDARD_CODES = new Set(getAllStickers().map(s => s.code))
@@ -11,7 +12,7 @@ export default function ExtrasPage() {
   const [newCode, setNewCode] = useState('')
   const [deleteCandidate, setDeleteCandidate] = useState(null)
   const hasPendingExtras = extraCodes.some(code => pendingChanges[code])
-  const normalizedNewCode = newCode.trim().toUpperCase()
+  const normalizedNewCode = normalizeStickerCodeForActiveAlbum(newCode)
   const canAddExtra = Boolean(normalizedNewCode) && !STANDARD_CODES.has(normalizedNewCode) && !extraCodes.includes(normalizedNewCode)
 
   useEffect(() => {
@@ -22,7 +23,7 @@ export default function ExtrasPage() {
   }, [stickers])
 
   const addExtra = () => {
-    const code = newCode.trim().toUpperCase()
+    const code = normalizeStickerCodeForActiveAlbum(newCode)
     if (code && !STANDARD_CODES.has(code) && !extraCodes.includes(code)) {
       updateStickerLocal(code, { owned: true, duplicates: 0 })
       setNewCode('')

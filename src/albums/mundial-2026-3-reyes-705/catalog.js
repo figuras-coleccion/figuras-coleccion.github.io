@@ -8,8 +8,18 @@ function prefixedCodes(prefix, count) {
   return Array.from({ length: count }, (_, index) => `${prefix}${index + 1}`)
 }
 
+function normalizeThreeReyesCode(code = '') {
+  const normalized = String(code || '').trim().toUpperCase()
+  if (/^T-?\d+$/.test(normalized)) {
+    return normalized.replace(/^T-?(\d+)$/, 'T-$1')
+  }
+  if (/^E-?\d+$/.test(normalized)) {
+    return normalized.replace(/^E-?(\d+)$/, 'E$1')
+  }
+  return normalized
+}
+
 const sectionDefinitions = [
-  { id: 'initial', title: 'Figura inicial', shortCode: '0', type: 'special', placement: 'leading', codes: ['0'] },
   { id: 'stadiums', title: 'Estadios', shortCode: 'EST', type: 'special', placement: 'leading', codes: numericCodes(1, 16) },
   { id: 'team-mex', team: 'MEX', title: 'México', flagCode: 'mx', start: 17, end: 32 },
   { id: 'team-cze', team: 'CZE', title: 'República Checa', flagCode: 'cz', start: 33, end: 48 },
@@ -61,9 +71,9 @@ const sectionDefinitions = [
   { id: 'team-pan', team: 'PAN', title: 'Panamá', flagCode: 'pa', start: 562, end: 568 },
   { id: 'world-champions', title: 'Campeones del Mundo', shortCode: 'CM', type: 'special', placement: 'trailing', codes: numericCodes(569, 580) },
   { id: 'first-world-cup', title: 'Primera vez en el Mundial', shortCode: '1RA', type: 'special', placement: 'trailing', codes: numericCodes(581, 584) },
-  { id: 'new-qualified', title: 'Nuevos equipos clasificados', shortCode: 'A-F', type: 'special', placement: 'trailing', codes: ['A', 'B', 'C', 'D', 'E', 'F'] },
+  { id: 'new-qualified', title: 'Nuevos equipos clasificados', shortCode: 'A-G', type: 'special', placement: 'trailing', codes: ['A', 'B', 'C', 'D', 'E', 'F', 'G'] },
   { id: 'playoffs', title: 'Repechaje', shortCode: 'E', type: 'special', placement: 'trailing', codes: prefixedCodes('E', 66) },
-  { id: 'shields', title: 'Escudos troquelados', shortCode: 'T', type: 'special', placement: 'trailing', codes: prefixedCodes('T', 48) }
+  { id: 'shields', title: 'Escudos troquelados', shortCode: 'T', type: 'special', placement: 'trailing', codes: prefixedCodes('T-', 48) }
 ]
 
 const albumGroups = sectionDefinitions.map(section => ({
@@ -75,11 +85,10 @@ const albumGroups = sectionDefinitions.map(section => ({
 }))
 
 const allStickersOrdered = [
-  '0',
   ...numericCodes(1, 584),
-  'A', 'B', 'C', 'D', 'E', 'F',
+  'A', 'B', 'C', 'D', 'E', 'F', 'G',
   ...prefixedCodes('E', 66),
-  ...prefixedCodes('T', 48)
+  ...prefixedCodes('T-', 48)
 ]
 
 if (allStickersOrdered.length !== 705) {
@@ -102,7 +111,7 @@ const stickerCountByTeam = Object.fromEntries(
 )
 const specialGroups = albumGroups.filter(group => group.type === 'special')
 const specials = specialGroups.flatMap(group => group.codes)
-const irregularCodeSet = new Set(['0', 'A', 'B', 'C', 'D', 'E', 'F', ...prefixedCodes('E', 66), ...prefixedCodes('T', 48)])
+const irregularCodeSet = new Set(['A', 'B', 'C', 'D', 'E', 'F', 'G', ...prefixedCodes('E', 66), ...prefixedCodes('T-', 48)])
 
 function getTeamStickerCount(team) {
   return stickerCountByTeam[team] || 0
@@ -121,7 +130,7 @@ function getAllStickers() {
 }
 
 function getPageFromCode(code) {
-  const normalized = String(code || '').trim().toUpperCase().replace(/^(E|T)-(?=\d)/, '$1')
+  const normalized = normalizeThreeReyesCode(code)
   const group = groupByCode.get(normalized)
   if (!group) return { type: 'extras', team: null, groupId: 'extras' }
   return { type: group.type, team: group.team || null, groupId: group.id }
@@ -129,10 +138,10 @@ function getPageFromCode(code) {
 
 export const threeReyesCatalog = {
   id: THREE_REYES_ALBUM_ID,
-  catalogVersion: 1,
-  title: 'Mundial 2026 - 3 Reyes',
-  shortTitle: 'Mundial 2026 - 3 Reyes',
-  brandTitleLines: ['Mundial 2026', '3 Reyes'],
+  catalogVersion: 2,
+  title: 'MUNDIAL 2026 3 REYES',
+  shortTitle: 'MUNDIAL 2026 3 REYES',
+  brandTitleLines: ['MUNDIAL 2026', '3 REYES'],
   publisher: '3 Reyes',
   edition: 'Versión completa de 705 figuritas',
   icon: 'albums/mundial-2026-3-reyes-705/icon.svg',
@@ -148,6 +157,7 @@ export const threeReyesCatalog = {
   getPageFromCode,
   getAlbumPageRange: () => ({ start: null, end: null }),
   getAlbumPageLabel: () => '',
+  normalizeStickerCode: normalizeThreeReyesCode,
   irregularCodeSet,
   highlightGroupIds: ['new-qualified', 'playoffs', 'shields']
 }

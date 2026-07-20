@@ -3,6 +3,7 @@ import { db, get, ref, update } from '../firebase'
 import { DEFAULT_ALBUM_ID } from '../albums/constants'
 import { useAlbum } from '../context/AlbumContext'
 import { useUser } from '../context/UserContext'
+import { useStickers } from '../context/StickersContext'
 import {
   decodeFiguritasExportPayload,
   FIGURITAS_EXPORT_PREFIX
@@ -11,7 +12,7 @@ import { decodeQrFromImageFile } from '../integrations/figuritas/qrImageReader'
 
 const styles = `
 .figuritas-import-overlay{position:fixed;inset:0;z-index:5600;display:grid;align-items:end;background:rgba(15,23,42,.66);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
-.figuritas-import-sheet{width:min(100%,720px);max-height:94vh;overflow:auto;margin:0 auto;padding:12px 20px 24px;border-radius:28px 28px 0 0;background:#fff;color:#0f172a;box-shadow:0 26px 80px rgba(15,23,42,.34)}
+.figuritas-import-sheet,.figuritas-import-sheet *{box-sizing:border-box}.figuritas-import-sheet{width:min(100%,720px);max-width:100%;min-width:0;max-height:94vh;overflow:auto;overflow-x:hidden;margin:0 auto;padding:12px 20px 24px;border-radius:28px 28px 0 0;background:#fff;color:#0f172a;box-shadow:0 26px 80px rgba(15,23,42,.34)}
 .figuritas-import-handle{width:54px;height:6px;display:block;margin:2px auto 14px;border-radius:999px;background:#cbd5e1}
 .figuritas-import-head{position:relative;text-align:center}
 .figuritas-import-close{position:absolute;right:0;top:-2px;width:38px;height:38px;display:grid;place-items:center;border:0;border-radius:50%;background:#f1f5f9;color:#475569;font-size:24px}
@@ -29,7 +30,7 @@ const styles = `
 .figuritas-import-status{margin-top:13px;padding:12px 13px;border-radius:15px;font-size:11px;font-weight:800;line-height:1.5}
 .figuritas-import-status.loading{background:#eef4ff;color:#2449b8}
 .figuritas-import-status.error{background:#fff0f0;color:#b42318}
-.figuritas-import-summary{margin-top:16px;padding:16px;border:1px solid #dbe4f0;border-radius:20px;background:#fff}
+.figuritas-import-summary{width:100%;max-width:100%;min-width:0;margin-top:16px;padding:16px;border:1px solid #dbe4f0;border-radius:20px;background:#fff;overflow-x:hidden}
 .figuritas-import-summary h3{margin:0 0 12px;font-size:17px}
 .figuritas-import-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .figuritas-import-stat{padding:11px 7px;border-radius:14px;background:#f8fafc;text-align:center}
@@ -40,11 +41,11 @@ const styles = `
 .figuritas-import-preview strong{display:block;margin-bottom:6px;font-size:10px}
 .figuritas-import-preview p{margin:0;color:#64748b;font-size:10px;font-weight:700;line-height:1.55;word-break:break-word}
 .figuritas-import-warning{margin-top:12px;padding:11px 12px;border-radius:14px;background:#fff7e8;color:#92400e;font-size:10px;font-weight:800;line-height:1.5}
-.figuritas-import-confirm-row{display:flex;align-items:flex-start;gap:9px;margin-top:13px;padding:11px 12px;border:1px solid #e2e8f0;border-radius:14px}
-.figuritas-import-confirm-row input{margin-top:2px}
-.figuritas-import-confirm-row span{color:#475569;font-size:10px;font-weight:750;line-height:1.45}
-.figuritas-import-actions{display:grid;grid-template-columns:1fr 1.35fr;gap:10px;margin-top:14px}
-.figuritas-import-actions button{min-height:50px;border-radius:15px;font-size:12px;font-weight:900}
+.figuritas-import-confirm-row{display:flex;align-items:flex-start;gap:10px;width:100%;max-width:100%;min-width:0;margin-top:13px;padding:11px 12px;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden}
+.figuritas-import-confirm-row input{flex:0 0 auto;width:22px;height:22px;margin:1px 0 0}
+.figuritas-import-confirm-row span{flex:1 1 auto;min-width:0;max-width:100%;color:#475569;font-size:10px;font-weight:750;line-height:1.45;overflow-wrap:anywhere;word-break:normal}
+.figuritas-import-actions{display:grid;grid-template-columns:1fr 1.35fr;gap:10px;width:100%;max-width:100%;min-width:0;margin-top:14px}
+.figuritas-import-actions button{width:100%;max-width:100%;min-width:0;min-height:50px;border-radius:15px;font-size:12px;font-weight:900}
 .figuritas-import-cancel{border:1px solid #dbe4f0;background:#f8fafc;color:#334155}
 .figuritas-import-primary{border:0;background:#315bdc;color:#fff}
 .figuritas-import-primary:disabled,.figuritas-import-cancel:disabled{opacity:.55}
@@ -63,9 +64,10 @@ function formatPreview(items, formatter = value => value) {
   return `${preview.join(', ')}${items.length > preview.length ? ` y ${items.length - preview.length} más` : ''}`
 }
 
-export default function FiguritasImportModal({ onClose }) {
+export default function FiguritasImportModal({ onClose, onFinish }) {
   const inputRef = useRef(null)
   const { user } = useUser()
+  const { replaceStickersFromExternalImport } = useStickers()
   const {
     activeAlbumId,
     activeAlbum,
@@ -111,7 +113,7 @@ export default function FiguritasImportModal({ onClose }) {
   const handleImport = async () => {
     if (!decoded || !confirmed || importing || !user?.id) return
     if (!isPaniniAlbum) {
-      setError('La importación de Figuritas solo está disponible para WORLD CUP 2026 - PANINI.')
+      setError('La importación de Figuritas solo está disponible para WORLD CUP 2026 PANINI.')
       return
     }
 
@@ -128,6 +130,7 @@ export default function FiguritasImportModal({ onClose }) {
       const now = Date.now()
       const importId = `${now}-${Math.random().toString(36).slice(2, 8)}`
       const updates = {}
+      const nextImportedStickers = {}
 
       updates[`${backupsPath}/${importId}`] = {
         albumId: activeAlbumId,
@@ -147,7 +150,7 @@ export default function FiguritasImportModal({ onClose }) {
         const owned = Boolean(imported.owned)
         const duplicates = owned ? Math.max(0, Number(imported.duplicates) || 0) : 0
 
-        updates[`${stickersPath}/${code}`] = {
+        const nextSticker = {
           ...existing,
           owned,
           duplicates,
@@ -157,6 +160,9 @@ export default function FiguritasImportModal({ onClose }) {
           updatedAt: now,
           lastImportSource: 'figuritas-export-qr'
         }
+
+        nextImportedStickers[code] = nextSticker
+        updates[`${stickersPath}/${code}`] = nextSticker
       })
 
       const summary = {
@@ -181,6 +187,7 @@ export default function FiguritasImportModal({ onClose }) {
       updates[`${statsPath}/lastActivityAt`] = now
 
       await update(ref(db), updates)
+      replaceStickersFromExternalImport(nextImportedStickers)
       setCompleted(true)
     } catch (importError) {
       console.error('No se pudo importar el álbum de Figuritas:', importError)
@@ -190,10 +197,6 @@ export default function FiguritasImportModal({ onClose }) {
     }
   }
 
-  const openAlbum = () => {
-    const base = import.meta.env.BASE_URL || '/'
-    window.location.assign(`${base}album?imported=figuritas`)
-  }
 
   if (!isPaniniAlbum) return null
 
@@ -237,10 +240,18 @@ export default function FiguritasImportModal({ onClose }) {
             <div aria-hidden="true">✓</div>
             <h3>Álbum importado correctamente</h3>
             <p>
-              Se creó un respaldo previo y se actualizó WORLD CUP 2026 - PANINI
+              Se creó un respaldo previo y se actualizó WORLD CUP 2026 PANINI
               con las obtenidas, faltantes y cantidades de repetidas detectadas.
             </p>
-            <button type="button" onClick={openAlbum}>Abrir mi álbum</button>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof onFinish === 'function') onFinish()
+                else onClose?.()
+              }}
+            >
+              FINALIZAR
+            </button>
           </div>
         ) : (
           <>

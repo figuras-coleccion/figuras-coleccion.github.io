@@ -384,6 +384,17 @@ input:focus {
   text-align: center;
 }
 
+
+.general-brand-title {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  line-height: 1.08;
+}
+.general-brand-title span {
+  display: block;
+  white-space: nowrap;
+}
 .register-card h1 {
   font-size: 24px;
   margin-bottom: 6px;

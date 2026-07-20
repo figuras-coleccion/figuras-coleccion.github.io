@@ -3,6 +3,7 @@ import { onValue, push } from 'firebase/database'
 import { auth, db, ref, get, update } from './firebase'
 import { DEFAULT_ALBUM_ID } from './albums/constants'
 import { getAlbumChildPath, getStoredActiveAlbumId, isProfileUsingAlbum } from './albums/runtime'
+import { buildAbsoluteAppUrl, ALBUM_ROUTE } from './appRoutes.js'
 
 let sending = false
 let hostOff = null
@@ -173,7 +174,7 @@ async function resolveHost(session, accepted) {
     changes[`qrTradeHostSessions/${session.hostId}/${session.id}/completedAt`] = Date.now()
     changes[`qrTradeGuestSessions/${session.guestId}/${session.id}/completedAt`] = Date.now()
     await update(ref(db), changes)
-    overlay('Trueque confirmado', 'Los dos álbumes fueron actualizados.', { label: 'Ver álbum', primary: true, action: () => location.assign(`${location.origin}${import.meta.env.BASE_URL || '/'}album?trade=qr-success`) })
+    overlay('Trueque confirmado', 'Los dos álbumes fueron actualizados.', { label: 'Ver álbum', primary: true, action: () => location.assign(buildAbsoluteAppUrl(ALBUM_ROUTE, '?trade=qr-success')) })
   } catch (error) {
     await update(ref(db), {
       [`qrTradeHostSessions/${session.hostId}/${session.id}/status`]: 'error',
@@ -198,7 +199,7 @@ function subscribe(uid) {
     if (latest.status === 'pending') overlay('Esperando confirmación', `${latest.hostName} debe aceptar el trueque.`, { label: 'Seguir esperando', primary: true, action: closeOverlay })
     if (latest.status === 'completed' && !sessionStorage.getItem(`qr_done_${latest.id}`)) {
       sessionStorage.setItem(`qr_done_${latest.id}`, '1')
-      overlay('Trueque confirmado', 'El anfitrión aceptó. Los dos álbumes fueron actualizados.', { label: 'Ver álbum', primary: true, action: () => location.assign(`${location.origin}${import.meta.env.BASE_URL || '/'}album?trade=qr-success`) })
+      overlay('Trueque confirmado', 'El anfitrión aceptó. Los dos álbumes fueron actualizados.', { label: 'Ver álbum', primary: true, action: () => location.assign(buildAbsoluteAppUrl(ALBUM_ROUTE, '?trade=qr-success')) })
     }
     if (latest.status === 'rejected' && !sessionStorage.getItem(`qr_rejected_${latest.id}`)) {
       sessionStorage.setItem(`qr_rejected_${latest.id}`, '1'); sending = false; confirmButton('Confirmar trueque', false)

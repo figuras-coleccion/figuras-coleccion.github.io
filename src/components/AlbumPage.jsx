@@ -58,7 +58,7 @@ export default function AlbumPage() {
     }, 180)
 
     return () => window.clearTimeout(timeout)
-    // Se ejecuta solo al abrir un enlace antiguo /album?page=N.
+    // Se ejecuta solo al abrir un enlace antiguo con page=N.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

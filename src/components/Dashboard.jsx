@@ -7,6 +7,7 @@ import { useAlbum } from '../context/AlbumContext'
 import { db, ref } from '../firebase'
 import { buildAlbumGroups } from '../data/albumGroups'
 import { DEFAULT_ALBUM_ID } from '../albums/constants'
+import { albumRoute } from '../appRoutes'
 
 function normalizeStickerState(state) {
   return {
@@ -58,7 +59,7 @@ function buildSections(albumId) {
   return groups.map(group => ({
     ...group,
     total: group.codes.length,
-    albumTarget: `/album#${group.id}`
+    albumTarget: albumRoute('', `#${group.id}`)
   }))
 }
 
@@ -69,7 +70,7 @@ function sectionLabel(section) {
 
 function sectionTarget(section) {
   if (!section) return ''
-  return section.albumTarget || `/album#${section.id}`
+  return section.albumTarget || albumRoute('', `#${section.id}`)
 }
 
 function clampPercent(value) {
@@ -314,21 +315,21 @@ export default function Dashboard() {
       tone: 'orange',
       label: 'Más repetida',
       value: mostRepeated.duplicates > 0 ? mostRepeated.code : '—',
-      onClick: () => navigate('/album?tab=duplicates')
+      onClick: () => navigate(albumRoute('?tab=duplicates'))
     },
     {
       icon: '⭐',
       tone: 'purple',
       label: 'Especiales pegadas',
       value: `${specialOwned} / ${specialTotal}`,
-      onClick: () => navigate(activeAlbum.id === DEFAULT_ALBUM_ID ? '/specials' : '/album')
+      onClick: () => navigate(activeAlbum.id === DEFAULT_ALBUM_ID ? '/specials' : albumRoute())
     },
     {
       icon: '🌐',
       tone: 'blue',
       label: 'Secciones completas',
       value: completionCount,
-      onClick: () => navigate('/album')
+      onClick: () => navigate(albumRoute())
     },
     {
       icon: '📅',
@@ -344,7 +345,7 @@ export default function Dashboard() {
       label: 'Últimas obtenidas',
       recent: recentObtained,
       title: recentTitle,
-      onClick: () => navigate('/album')
+      onClick: () => navigate(albumRoute())
     }
   ]
 
@@ -382,7 +383,7 @@ export default function Dashboard() {
       <p className="dashboard-progress-caption">Tu álbum está al <strong>{completionPercent}%</strong> completado</p>
 
       <div className="dashboard-actions card">
-        <button type="button" className="btn-primary" onClick={() => navigate('/album')}>
+        <button type="button" className="btn-primary" onClick={() => navigate(albumRoute())}>
           📖 Ver Álbum
         </button>
         <div className="dashboard-report-actions">

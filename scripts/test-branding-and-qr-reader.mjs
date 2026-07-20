@@ -10,17 +10,20 @@ const index = read('index.html')
 const reader = read('src/integrations/figuritas/qrImageReader.js')
 const protocol = read('src/integrations/figuritas/exportProtocol.js')
 const modal = read('src/components/FiguritasImportModal.jsx')
+const tradeHub = read('src/components/TradeHub.jsx')
 
 const required = [
   [register, '⚽ FIGURAS COLECCIÓN', 'marca general del login'],
   [register, 'Todos tus álbumes en un solo lugar', 'subtítulo general'],
   [register, 'Ingresar con Google', 'acceso único con Google'],
   [index, '<title>Figuras Colección</title>', 'título del navegador'],
-  [reader, 'html5-qrcode/2.3.8/html5-qrcode.min.js', 'motor de Trueque QR'],
-  [reader, 'scanner.scanFile(file, false)', 'lectura completa con Html5Qrcode'],
-  [reader, 'buildCandidateCanvases', 'recortes automáticos'],
-  [reader, 'MAX_HTML5_CANDIDATES = 18', 'barrido de regiones'],
-  [protocol, "FIGURITAS_TRADE_PREFIX = '站救'", 'detección del QR de intercambio'],
+  [tradeHub, 'html5-qrcode/2.3.8/html5-qrcode.min.js', 'motor de Trueque QR'],
+  [tradeHub, 'fileScanner.scanFile(file, false)', 'lectura completa con Html5Qrcode'],
+  [reader, 'buildCandidateCrops', 'recortes automáticos'],
+  [reader, 'MAX_CANDIDATES = 30', 'barrido de regiones'],
+  [protocol, "FIGURITAS_TRADE_PREFIX = '⋋~'", 'detección del QR de intercambio'],
+  [protocol, "LEGACY_TRADE_PREFIX = '站救'", 'compatibilidad con QR legacy'],
+  [protocol, 'encodeFiguritasTradeConfirmationPayload', 'generación del QR final de intercambio'],
   [protocol, 'Este es el QR de intercambio de Figuritas', 'mensaje correcto para QR equivocado'],
   [modal, 'recortes automáticos', 'estado visual del lector mejorado']
 ]

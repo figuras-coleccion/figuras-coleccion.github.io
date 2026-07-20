@@ -6,9 +6,10 @@ import { useAlbum } from '../context/AlbumContext'
 import { useEditLock } from '../context/EditLockContext'
 import { db, ref, get } from '../firebase'
 import HowItWorksModal from './HowItWorksModal'
+import { ALBUM_ROUTE } from '../appRoutes'
 
 const headerStyles = `
-  .app-header{min-height:108px;padding:12px 16px;gap:14px}.brand-block{flex:1 1 auto;min-width:0}.brand-primary{display:flex;align-items:center;gap:14px;min-width:0}.brand-logo{width:clamp(74px,8vw,96px);height:clamp(74px,8vw,96px);flex:0 0 auto;display:block;object-fit:contain;filter:drop-shadow(0 5px 10px rgba(15,23,42,.14))}.app-header .brand-title{margin:0;max-width:none;color:#050505!important;font-family:'Poppins','Montserrat','Avenir Next',Arial,sans-serif;font-size:clamp(24px,3.2vw,42px)!important;font-weight:800!important;line-height:1.03!important;letter-spacing:-.035em}.brand-title-line{display:block;white-space:nowrap}.brand-tagline,.brand-members{margin-left:calc(clamp(74px,8vw,96px) + 14px)}
+  .app-header{min-height:108px;padding:12px 16px;gap:14px}.brand-block{flex:1 1 auto;min-width:0}.brand-primary{display:flex;align-items:center;gap:14px;min-width:0}.brand-logo{width:clamp(74px,8vw,96px);height:clamp(74px,8vw,96px);flex:0 0 auto;display:block;object-fit:contain;filter:drop-shadow(0 5px 10px rgba(15,23,42,.14))}.app-header .brand-title{margin:0;max-width:none;color:#050505!important;font-family:'Poppins','Montserrat','Avenir Next',Arial,sans-serif;font-size:clamp(24px,3.2vw,42px)!important;font-weight:800!important;line-height:1.03!important;letter-spacing:0}.brand-title-line{display:block;white-space:nowrap}.brand-tagline,.brand-members{margin-left:calc(clamp(74px,8vw,96px) + 14px)}
   @media(max-width:760px){.app-header{min-height:102px;padding:10px 12px}.brand-logo{width:76px;height:76px}.app-header .brand-title{font-size:clamp(19px,4.7vw,27px)!important}.brand-tagline,.brand-members{display:none!important}}
   @media(max-width:520px){.app-header{min-height:96px;padding:9px;gap:8px}.brand-primary{gap:10px}.brand-logo{width:68px;height:68px}.app-header .brand-title{font-size:clamp(17px,4.9vw,23px)!important;line-height:1.05!important}.header-profile-text{display:none!important}}
   @media(max-width:390px){.brand-logo{width:60px;height:60px}.app-header .brand-title{font-size:16px!important}}
@@ -118,7 +119,7 @@ export default function Layout() {
 
       <nav className="bottom-nav">
         <NavLink to="/" end className={navClass}><span className="icon">📊</span><span>Dashboard</span></NavLink>
-        <NavLink to="/album" className={navClass}><span className="icon">📖</span><span>Álbum</span></NavLink>
+        <NavLink to={ALBUM_ROUTE} className={navClass}><span className="icon">📖</span><span>Álbum</span></NavLink>
         <NavLink to="/trade" className={navClass}><span className="icon">🔄</span><span>Trueque</span></NavLink>
         <NavLink to="/settings" className={navClass}><span className="icon">⚙️</span><span>Configuración</span></NavLink>
         {isAdmin && <NavLink to="/admin" className={navClass}><span className="icon">🛡️</span><span>Admin</span></NavLink>}

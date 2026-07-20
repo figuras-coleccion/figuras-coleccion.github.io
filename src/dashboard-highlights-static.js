@@ -1,6 +1,7 @@
+import { buildAppPath, ALBUM_ROUTE } from './appRoutes.js'
+
 function albumUrlFor(code) {
-  const base = import.meta.env.BASE_URL || '/'
-  return `${base}album?q=${encodeURIComponent(code)}`
+  return buildAppPath(ALBUM_ROUTE, `?q=${encodeURIComponent(code)}`)
 }
 
 function prepareHighlights() {

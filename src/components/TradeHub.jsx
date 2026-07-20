@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Html5Qrcode } from 'html5-qrcode'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useUser } from '../context/UserContext'
 import { useStickers } from '../context/StickersContext'
@@ -7,36 +8,14 @@ import { useAlbum } from '../context/AlbumContext'
 import { db, ref, get } from '../firebase'
 import { buildAlbumGroups, getStickerDisplayNumber, isIrregularStickerCode } from '../data/albumGroups'
 import { getAlbumStickersFromUser, isProfileUsingAlbum } from '../albums/runtime'
+import { albumRoute } from '../appRoutes'
+import FiguritasTradeModal from './FiguritasTradeModal'
+import LocalQrCode from './LocalQrCode'
+import { decodeQrFromImageFile } from '../integrations/figuritas/qrImageReader'
+import { classifyFiguritasPayload } from '../integrations/figuritas/exportProtocol'
 
-const QR_SCANNER_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js'
-let qrScannerLibraryPromise = null
-
-function ensureQrScannerLibrary() {
-  if (window.Html5Qrcode) return Promise.resolve(window.Html5Qrcode)
-  if (qrScannerLibraryPromise) return qrScannerLibraryPromise
-
-  qrScannerLibraryPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${QR_SCANNER_SCRIPT}"]`)
-    if (existing) {
-      if (window.Html5Qrcode) {
-        resolve(window.Html5Qrcode)
-        return
-      }
-      existing.addEventListener('load', () => resolve(window.Html5Qrcode), { once: true })
-      existing.addEventListener('error', () => reject(new Error('No se pudo cargar el lector QR.')), { once: true })
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = QR_SCANNER_SCRIPT
-    script.async = true
-    script.crossOrigin = 'anonymous'
-    script.onload = () => resolve(window.Html5Qrcode)
-    script.onerror = () => reject(new Error('No se pudo cargar el lector QR.'))
-    document.head.appendChild(script)
-  })
-
-  return qrScannerLibraryPromise
+async function ensureQrScannerLibrary() {
+  return Html5Qrcode
 }
 
 function parseQrUserId(rawValue) {
@@ -187,7 +166,7 @@ function QrMatchGrid({ codes, getAvailable, emptyMessage }) {
   )
 }
 
-function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartnerIdChange, activeAlbumId, activeAlbumTitle, activeAlbumIcon }) {
+function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartnerIdChange, onFiguritasPayload, activeAlbumId, activeAlbumTitle, activeAlbumIcon }) {
   const scannerRef = useRef(null)
   const fileScannerRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -207,10 +186,6 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
     const basePath = import.meta.env.BASE_URL || '/'
     return `${window.location.origin}${basePath}trade?qrUser=${encodeURIComponent(user.id)}&album=${encodeURIComponent(activeAlbumId)}`
   }, [activeAlbumId, user.id])
-  const qrImageUrl = useMemo(
-    () => `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=14&qzone=4&ecc=H&data=${encodeURIComponent(qrPayload)}`,
-    [qrPayload]
-  )
 
   const albumIconUrl = useMemo(() => {
     const basePath = import.meta.env.BASE_URL || '/'
@@ -314,16 +289,51 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
     if (scanLockedRef.current) return
     scanLockedRef.current = true
 
-    const partnerId = parseQrUserId(decodedText)
-    await stopScanner({ closeSheet: true })
+    try {
+      const raw = String(decodedText || '')
+        .replace(/^\uFEFF/, '')
+        .replace(/[\u200B-\u200D\u2060]/g, '')
+        .trim()
 
-    if (!partnerId) {
-      setQrError('El código leído no pertenece a Panini 2026.')
-      return
+      const figuritasKind = classifyFiguritasPayload(raw)
+      await stopScanner({ closeSheet: true })
+
+      // El protocolo externo debe clasificarse antes de intentar extraer un
+      // usuario interno. Así ⋋~, ;⋋~ y ⋋^ nunca se confunden con Firebase.
+      if (figuritasKind.type === 'trade') {
+        onFiguritasPayload?.(raw)
+        return
+      }
+
+      if (figuritasKind.type === 'trade-confirmation') {
+        setQrError(
+          'Este es el QR final de actualización de Figuritas. Para iniciar un trueque usa el QR inicial del anfitrión.'
+        )
+        return
+      }
+
+      if (figuritasKind.type === 'export') {
+        setQrError(
+          'Este es el QR de Exportar álbum de Figuritas. Para intercambiar usa el QR inicial de “Intercambiar figuritas”.'
+        )
+        return
+      }
+
+      const partnerId = parseQrUserId(raw)
+      if (!partnerId) {
+        setQrError(
+          'El QR fue leído, pero no corresponde a Figuras Colección ni a un formato compatible de Figuritas.'
+        )
+        return
+      }
+
+      await loadPartnerMatch(partnerId, { updateUrl: true })
+    } finally {
+      // Permite volver a elegir otra captura después de un QR incorrecto o
+      // después de cerrar el modal externo.
+      scanLockedRef.current = false
     }
-
-    await loadPartnerMatch(partnerId, { updateUrl: true })
-  }, [loadPartnerMatch, stopScanner])
+  }, [loadPartnerMatch, onFiguritasPayload, stopScanner])
 
   const startCameraScanner = useCallback(async () => {
     if (startingCameraRef.current) return
@@ -421,19 +431,8 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
 
     try {
       await stopScanner({ closeSheet: true })
-      const Html5Qrcode = await ensureQrScannerLibrary()
-      if (!Html5Qrcode) throw new Error('No se pudo iniciar el lector de imágenes QR.')
-
-      await waitForElement('panini-file-qr-reader')
-      const fileScanner = new Html5Qrcode('panini-file-qr-reader', false)
-      fileScannerRef.current = fileScanner
-      const decodedText = await fileScanner.scanFile(file, false)
-      await fileScanner.clear().catch(() => {})
-      fileScannerRef.current = null
-
-      const partnerId = parseQrUserId(decodedText)
-      if (!partnerId) throw new Error('La imagen no contiene un QR válido de Panini 2026.')
-      await loadPartnerMatch(partnerId, { updateUrl: true })
+      const decodedText = await decodeQrFromImageFile(file)
+      await acceptDecodedValue(decodedText)
     } catch (error) {
       console.error('Error reading QR image:', error)
       const fileScanner = fileScannerRef.current
@@ -444,7 +443,7 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
       setReadingFile(false)
       setScannerStatus('')
     }
-  }, [loadPartnerMatch, stopScanner])
+  }, [acceptDecodedValue, stopScanner])
 
   const partnerName = match
     ? `${match.profile.name || ''} ${match.profile.surname || ''}`.trim() || 'Coleccionista'
@@ -472,7 +471,7 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
         </div>
 
         <div className="qr-image-frame">
-          <img className="qr-code-image" src={qrImageUrl} alt={`Código QR de intercambio de ${activeAlbumTitle}`} />
+          <LocalQrCode value={qrPayload} size={360} className="qr-code-image" alt={`Código QR de intercambio de ${activeAlbumTitle}`} />
           {albumIconUrl && (
             <span className="qr-album-icon-overlay" aria-hidden="true">
               <img src={albumIconUrl} alt="" />
@@ -616,7 +615,7 @@ function ManualTradePanel({ stickers, orderedCodes, editingLocked, applyManualTr
       })
 
       window.setTimeout(() => {
-        navigate('/album?trade=success', { replace: true })
+        navigate(albumRoute('?trade=success'), { replace: true })
       }, 1700)
     } catch (error) {
       console.error('Error applying manual trade:', error)
@@ -710,6 +709,7 @@ export default function TradeHub() {
   const orderedCodes = useMemo(() => groups.flatMap(group => group.codes), [groups])
   const qrPartnerId = searchParams.get('qrUser') || ''
   const [activeMode, setActiveMode] = useState(qrPartnerId ? 'qr' : 'manual')
+  const [figuritasPayload, setFiguritasPayload] = useState('')
 
   useEffect(() => {
     if (qrPartnerId) setActiveMode('qr')
@@ -768,11 +768,19 @@ export default function TradeHub() {
           orderedCodes={orderedCodes}
           initialPartnerId={qrPartnerId}
           onPartnerIdChange={setPartnerIdInUrl}
+          onFiguritasPayload={setFiguritasPayload}
           activeAlbumId={activeAlbumId}
           activeAlbumTitle={activeAlbum.shortTitle}
           activeAlbumIcon={activeAlbum.icon}
         />
       )}
+
+      {figuritasPayload ? (
+        <FiguritasTradeModal
+          initialPayload={figuritasPayload}
+          onClose={() => setFiguritasPayload('')}
+        />
+      ) : null}
     </div>
   )
 }
