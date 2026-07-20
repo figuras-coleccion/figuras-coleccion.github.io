@@ -3436,7 +3436,7 @@ select:focus {
 
 /*
  * VISTA NORMAL DE 3 REYES
- * Se conserva exactamente como fue aprobada.
+ * Se mantiene exactamente como fue aprobada.
  */
 .visual-report-page.visual-report-multi-page .visual-report-cells {
   grid-template-columns: repeat(17, minmax(0, 1fr)) !important;
@@ -3448,10 +3448,14 @@ select:focus {
 
 /*
  * SOLO PDF / IMPRESION
- * Mantiene los margenes actuales.
- * Las 59 filas usan una altura segura de 4mm y se reparten
- * verticalmente con space-between para que la primera y la ultima
- * queden dentro de la hoja sin dejar un gran margen inferior.
+ *
+ * 3 Reyes tiene exactamente 59 filas:
+ * 1 Estadios + 48 paises + 3 especiales + 4 Repechaje + 3 Escudos.
+ *
+ * La causa del recorte era height:100% aplicado a cada fila dentro
+ * de una cuadricula de 59 tracks. Cada fila intentaba medir toda la
+ * altura del contenedor. Ahora cada fila usa height:auto y ocupa solo
+ * su track. Tambien se eliminan todas las divisiones horizontales.
  */
 @media print {
   @page visualReport {
@@ -3461,9 +3465,9 @@ select:focus {
 
   .visual-report-page.visual-report-multi-page .visual-report-sheet {
     width: 100% !important;
-    height: 287mm !important;
-    min-height: 287mm !important;
-    max-height: 287mm !important;
+    height: 286.5mm !important;
+    min-height: 286.5mm !important;
+    max-height: 286.5mm !important;
     display: grid !important;
     grid-template-rows: auto minmax(0, 1fr) !important;
     align-content: stretch !important;
@@ -3479,23 +3483,23 @@ select:focus {
     grid-row: 1 !important;
     width: 100% !important;
     min-height: 0 !important;
-    margin: 0 0 0.55mm 0 !important;
+    margin: 0 0 0.35mm 0 !important;
     padding: 0 !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only > .visual-report-legend {
     width: 100% !important;
-    min-height: 3.3mm !important;
-    padding: 0.28mm 1.05mm !important;
+    min-height: 3.05mm !important;
+    padding: 0.2mm 1mm !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-legend span {
-    font-size: 6.15px !important;
+    font-size: 6px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-legend i {
-    width: 6.4px !important;
-    height: 6.4px !important;
+    width: 6.2px !important;
+    height: 6.2px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-grid {
@@ -3504,11 +3508,10 @@ select:focus {
     height: 100% !important;
     min-height: 0 !important;
     max-height: none !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important;
-    align-items: stretch !important;
-    gap: 0 !important;
+    display: grid !important;
+    grid-template-rows: repeat(59, minmax(0, 1fr)) !important;
+    row-gap: 0 !important;
+    column-gap: 0 !important;
     overflow: hidden !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -3516,19 +3519,19 @@ select:focus {
 
   .visual-report-page.visual-report-multi-page .visual-report-row,
   .visual-report-page.visual-report-multi-page .visual-report-row:nth-child(5n):not(:last-child) {
-    flex: 0 0 4mm !important;
     width: 100% !important;
     min-width: 0 !important;
-    height: 4mm !important;
-    min-height: 4mm !important;
-    max-height: 4mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     margin: 0 !important;
     padding: 0 !important;
     display: grid !important;
     grid-template-columns: 82px minmax(0, 1fr) !important;
     gap: 1.1px !important;
     align-items: stretch !important;
-    border-bottom-width: 0.25px !important;
+    border: 0 !important;
+    border-bottom: 0 !important;
     overflow: hidden !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
@@ -3537,13 +3540,16 @@ select:focus {
   .visual-report-page.visual-report-multi-page .visual-report-row-label {
     width: 100% !important;
     min-width: 0 !important;
-    height: 4mm !important;
-    min-height: 4mm !important;
-    max-height: 4mm !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
     align-self: stretch !important;
+    margin: 0 !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     overflow: hidden !important;
+    border-top: 0.35px solid #cbd5e1 !important;
+    border-bottom: 0.35px solid #cbd5e1 !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-row-label.visual-report-row-label-category {
@@ -3554,36 +3560,41 @@ select:focus {
     width: 100% !important;
     height: 100% !important;
     min-height: 0 !important;
+    margin: 0 !important;
     padding: 0 1.5px !important;
-    font-size: 4.9px !important;
+    border-radius: 1.5px !important;
+    font-size: 4.8px !important;
     text-transform: uppercase !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-cells {
     width: 100% !important;
     min-width: 0 !important;
-    height: 4mm !important;
-    min-height: 4mm !important;
-    max-height: 4mm !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
     align-self: stretch !important;
     display: grid !important;
     grid-template-columns: repeat(17, minmax(0, 1fr)) !important;
     grid-auto-flow: row !important;
-    gap: 0.5px !important;
+    gap: 0.45px !important;
+    margin: 0 !important;
+    padding: 0 !important;
     overflow: hidden !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-sticker-cell {
     width: 100% !important;
     min-width: 0 !important;
-    height: 4mm !important;
-    min-height: 4mm !important;
-    max-height: 4mm !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
     align-self: stretch !important;
+    margin: 0 !important;
     padding: 0 !important;
-    border-radius: 1.6px !important;
+    border-radius: 1.5px !important;
     border-width: 0.4px !important;
-    font-size: 6.8px !important;
+    font-size: 6.65px !important;
     line-height: 1 !important;
     overflow: hidden !important;
   }
