@@ -8,6 +8,7 @@ import { db, ref } from '../firebase'
 import { buildAlbumGroups } from '../data/albumGroups'
 import { DEFAULT_ALBUM_ID } from '../albums/constants'
 import { albumRoute } from '../appRoutes'
+import SafeProfileImage from './SafeProfileImage'
 
 function normalizeStickerState(state) {
   return {
@@ -354,7 +355,7 @@ export default function Dashboard() {
       <div className="dashboard-title-row">
         <h2><span aria-hidden="true">📊</span> Mi Dashboard</h2>
         <div className="dashboard-title-avatar" title={`${user?.name || ''} ${user?.surname || ''}`.trim() || 'Mi perfil'}>
-          {user?.photoURL ? <img src={user.photoURL} alt="Foto de perfil" /> : <span>{userInitial}</span>}
+          <SafeProfileImage src={user?.photoURL} alt="Foto de perfil" fallback={userInitial} />
         </div>
       </div>
 

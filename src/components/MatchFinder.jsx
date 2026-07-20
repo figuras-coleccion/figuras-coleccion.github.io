@@ -7,6 +7,7 @@ import { db, ref, get } from '../firebase'
 import { allStickersOrdered } from '../data/stickersData'
 import { getCountryName } from '../data/countries'
 import { getAlbumStickersFromUser, isProfileUsingAlbum } from '../albums/runtime'
+import SafeProfileImage from './SafeProfileImage'
 
 const ORDER_INDEX = new Map(allStickersOrdered.map((code, index) => [code, index]))
 
@@ -205,7 +206,7 @@ export default function MatchFinder() {
                   <div className="match-card-head">
                     <div className="match-rank">#{index + 1}</div>
                     <div className="match-avatar">
-                      {match.user.photoURL ? <img src={match.user.photoURL} alt="Foto de perfil" /> : <span>{initials(match.user)}</span>}
+                      <SafeProfileImage src={match.user.photoURL} alt="Foto de perfil" fallback={initials(match.user)} />
                     </div>
                     <div className="match-user-main">
                       <div className="user-name">{match.user.name} {match.user.surname}</div>

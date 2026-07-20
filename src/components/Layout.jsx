@@ -6,6 +6,7 @@ import { useAlbum } from '../context/AlbumContext'
 import { useEditLock } from '../context/EditLockContext'
 import { db, ref, get } from '../firebase'
 import HowItWorksModal from './HowItWorksModal'
+import SafeProfileImage from './SafeProfileImage'
 import { ALBUM_ROUTE } from '../appRoutes'
 
 const headerStyles = `
@@ -107,7 +108,7 @@ export default function Layout() {
           <div className="header-user-actions">
             <button type="button" className={`header-edit-lock ${editingLocked ? 'locked' : 'unlocked'}`} onClick={toggleEditingLock} aria-pressed={editingLocked} aria-label={editingLocked ? 'Desbloquear edición del álbum' : 'Bloquear edición del álbum'} title={editingLocked ? 'Edición bloqueada. Toca para desbloquear.' : 'Edición habilitada. Toca para bloquear.'}>{editingLocked ? '🔒' : '🔓'}</button>
             <Link to="/profile" className="header-profile-link" title="Ver mi perfil">
-              <div className="header-avatar">{user?.photoURL ? <img src={user.photoURL} alt="Foto de perfil" /> : <span>{initial}</span>}</div>
+              <div className="header-avatar"><SafeProfileImage src={user?.photoURL} alt="Foto de perfil" fallback={initial} /></div>
               <div className="header-profile-text"><strong>{user?.name} {user?.surname}</strong><small>Mi perfil ⚙️</small></div>
             </Link>
           </div>

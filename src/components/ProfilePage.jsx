@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../context/UserContext'
 import { COUNTRIES, getCountryName } from '../data/countries'
+import SafeProfileImage from './SafeProfileImage'
 
 const MAX_IMAGE_MB = 5
 const MAX_IMAGE_BYTES = MAX_IMAGE_MB * 1024 * 1024
@@ -254,7 +255,7 @@ export default function ProfilePage() {
 
       <div className="card profile-summary-card">
         <div className="profile-avatar-lg">
-          {photoURL ? <img src={photoURL} alt="Foto de perfil" /> : <span>{(currentProfile.name || 'U').slice(0, 1).toUpperCase()}</span>}
+          <SafeProfileImage src={photoURL} alt="Foto de perfil" fallback={(currentProfile.name || 'U').slice(0, 1).toUpperCase()} />
         </div>
         <div>
           <h3>{currentProfile.name || user.name} {currentProfile.surname || user.surname}</h3>
@@ -267,7 +268,7 @@ export default function ProfilePage() {
       <form className="card profile-form" onSubmit={handleSubmit}>
         <div className="profile-photo-editor">
           <div className="profile-photo-preview">
-            {photoURL ? <img src={photoURL} alt="Vista previa de perfil" /> : <span>{(currentProfile.name || 'U').slice(0, 1).toUpperCase()}</span>}
+            <SafeProfileImage src={photoURL} alt="Vista previa de perfil" fallback={(currentProfile.name || 'U').slice(0, 1).toUpperCase()} />
           </div>
           <div className="profile-photo-actions">
             <strong>Foto de perfil</strong>

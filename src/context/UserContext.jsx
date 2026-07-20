@@ -100,6 +100,12 @@ function buildUserData(firebaseUser, profile = {}) {
   const fallback = splitDisplayName(firebaseUser?.displayName)
   const googleProfile = firebaseUser?.providerData?.find(item => item.providerId === 'google.com')
   const googlePhotoURL = googleProfile?.photoURL || firebaseUser?.photoURL || ''
+  const storedPhotoURL = cleanText(profile.photoURL)
+  const storedPhotoSource = cleanText(profile.photoSource)
+  const resolvedPhotoSource = storedPhotoSource || (storedPhotoURL ? 'profile' : (googlePhotoURL ? 'google' : 'none'))
+  const resolvedPhotoURL = resolvedPhotoSource === 'google' && googlePhotoURL
+    ? googlePhotoURL
+    : storedPhotoURL || googlePhotoURL || ''
   const storedCreatedAt = Number(profile.createdAt || profile.onboardingInitializedAt) || 0
   const createdAt = storedCreatedAt || Date.now()
   const howItWorksSeenAt = Number(profile.howItWorksSeenAt) || null
@@ -123,9 +129,9 @@ function buildUserData(firebaseUser, profile = {}) {
     email: normalizeEmail(profile.email || firebaseUser.email),
     countryCode: cleanText(profile.countryCode || profile.country || ''),
     countryName: getCountryName(profile.countryCode || profile.country || ''),
-    photoURL: profile.photoURL || googlePhotoURL || '',
+    photoURL: resolvedPhotoURL,
     googlePhotoURL,
-    photoSource: profile.photoSource || (profile.photoURL ? 'profile' : (googlePhotoURL ? 'google' : 'none')),
+    photoSource: resolvedPhotoSource,
     provider: profile.provider || firebaseUser.providerData?.[0]?.providerId || 'password',
     emailVerified: Boolean(firebaseUser.emailVerified),
     createdAt,

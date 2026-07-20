@@ -6,6 +6,7 @@ import { db, ref, get } from '../firebase'
 import { allStickersOrdered } from '../data/stickersData'
 import { getCountryName } from '../data/countries'
 import { getAlbumStickersFromUser } from '../albums/runtime'
+import SafeProfileImage from './SafeProfileImage'
 
 function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase()
@@ -253,7 +254,7 @@ export default function AdminDashboard() {
             <div className="admin-user-card" key={item.id}>
               <div className="admin-user-main">
                 <div className="admin-avatar">
-                  {item.profile.photoURL ? <img src={item.profile.photoURL} alt="Foto de usuario" /> : <span>{initials(item.profile)}</span>}
+                  <SafeProfileImage src={item.profile.photoURL} alt="Foto de usuario" fallback={initials(item.profile)} />
                 </div>
                 <div>
                   <h3>{item.fullName}</h3>

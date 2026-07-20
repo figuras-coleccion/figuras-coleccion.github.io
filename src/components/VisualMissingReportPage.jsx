@@ -14,16 +14,16 @@ function normalizeStickerState(state) {
 }
 
 function getCompactCategoryLabel(group) {
+  const id = String(group?.id || '').trim().toLowerCase()
   const shortCode = String(group?.shortCode || '').trim().toUpperCase()
   const description = `${group?.id || ''} ${group?.title || ''}`.toLowerCase()
 
-  if (shortCode === 'EST' || description.includes('estadio')) return 'Estadios'
-  if (shortCode === 'CM' || description.includes('campeon')) return 'Campeones'
-  if (shortCode === '1RA' || description.includes('primer mundial') || description.includes('1er mundial')) return '1er Mundial'
-  if (description.includes('repech')) return 'Repechaje'
-  if (description.includes('clasific') || shortCode === 'A-G') return 'Clasificados'
-  if (description.includes('escud') || shortCode === 'E') return 'Escudos'
-  if (description.includes('troquel') || shortCode === 'T') return 'Troqueladas'
+  if (id === 'stadiums' || shortCode === 'EST' || description.includes('estadio')) return 'Estadios'
+  if (id === 'world-champions' || shortCode === 'CM' || description.includes('campeon')) return 'Campeones'
+  if (id === 'first-world-cup' || shortCode === '1RA') return '1er Mundial'
+  if (id === 'new-qualified' || shortCode === 'A-G' || description.includes('clasific')) return 'Clasificados'
+  if (id === 'playoffs' || shortCode === 'E' || description.includes('repech')) return 'Repechaje'
+  if (id === 'shields' || shortCode === 'T' || description.includes('escud') || description.includes('troquel')) return 'Escudos'
 
   return String(group?.title || shortCode || 'Especiales').trim()
 }
@@ -31,18 +31,27 @@ function getCompactCategoryLabel(group) {
 function getRowSizeForAlbumGroup(group, albumId) {
   if (albumId === DEFAULT_ALBUM_ID) return 20
 
+  const id = String(group?.id || '').trim().toLowerCase()
   const shortCode = String(group?.shortCode || '').trim().toUpperCase()
-  const description = `${group?.id || ''} ${group?.title || ''}`.toLowerCase()
-  const forceTwoRows = shortCode === 'E' || shortCode === 'T' || description.includes('repech') || description.includes('escud') || description.includes('troquel')
 
-  if (forceTwoRows) return Math.ceil(group.codes.length / 2)
+  // E1-E66: four rows (17 + 17 + 17 + 15).
+  if (id === 'playoffs' || shortCode === 'E') return 17
+
+  // T-1-T-48: three rows of 16.
+  if (id === 'shields' || shortCode === 'T') return 16
+
   return Math.min(16, Math.max(1, group.codes.length))
 }
 
 function buildLabelMeta(group, part, totalParts, albumId) {
   const suffix = totalParts > 1 ? ` ${part + 1}` : ''
+
   if (group.flagCode) {
-    return { type: 'flag', flagCode: group.flagCode, code: `${group.shortCode}${suffix}` }
+    return {
+      type: 'flag',
+      flagCode: group.flagCode,
+      code: `${group.shortCode}${suffix}`
+    }
   }
 
   if (albumId !== DEFAULT_ALBUM_ID) {
@@ -55,7 +64,11 @@ function buildLabelMeta(group, part, totalParts, albumId) {
   return {
     type: 'brand',
     brand: group.type === 'collection' ? 'coca-cola' : 'fifa',
-    text: group.type === 'collection' ? 'Coca-Cola' : group.id === 'fwc-specials' ? 'FIFA' : group.shortCode,
+    text: group.type === 'collection'
+      ? 'Coca-Cola'
+      : group.id === 'fwc-specials'
+        ? 'FIFA'
+        : group.shortCode,
     code: `${group.shortCode}${suffix}`
   }
 }
@@ -70,6 +83,7 @@ function chunks(values, size = 20) {
 
 function buildVisualRows(orderMode = 'album', albumId = DEFAULT_ALBUM_ID) {
   const groups = buildAlbumGroups()
+
   if (albumId === DEFAULT_ALBUM_ID) {
     const leadingGroups = groups.filter(group => group.placement === 'leading')
     const countryGroups = groups.filter(group => group.placement === 'country')
@@ -77,6 +91,7 @@ function buildVisualRows(orderMode = 'album', albumId = DEFAULT_ALBUM_ID) {
     const orderedCountries = orderMode === 'alphabetical'
       ? [...countryGroups].sort((a, b) => a.shortCode.localeCompare(b.shortCode))
       : countryGroups
+
     const specials = {
       id: 'fwc-specials',
       title: 'FIFA World Cup Specials',
@@ -90,14 +105,19 @@ function buildVisualRows(orderMode = 'album', albumId = DEFAULT_ALBUM_ID) {
       labelMeta: buildLabelMeta(group, 0, 1, albumId),
       fullName: group.title,
       columns: 20,
-      cells: group.codes.map(code => ({ code, number: getStickerDisplayNumber(code) }))
+      cells: group.codes.map(code => ({
+        code,
+        number: getStickerDisplayNumber(code)
+      }))
     }))
   }
 
   const orderedGroups = orderMode === 'alphabetical'
     ? [
         ...groups.filter(group => group.placement === 'leading'),
-        ...groups.filter(group => group.placement === 'country').sort((a, b) => a.shortCode.localeCompare(b.shortCode)),
+        ...groups
+          .filter(group => group.placement === 'country')
+          .sort((a, b) => a.shortCode.localeCompare(b.shortCode)),
         ...groups.filter(group => group.placement === 'trailing')
       ]
     : groups
@@ -105,12 +125,16 @@ function buildVisualRows(orderMode = 'album', albumId = DEFAULT_ALBUM_ID) {
   return orderedGroups.flatMap(group => {
     const rowSize = getRowSizeForAlbumGroup(group, albumId)
     const parts = chunks(group.codes, rowSize)
+
     return parts.map((codes, part) => ({
       id: `${group.id}-${part}`,
       labelMeta: buildLabelMeta(group, part, parts.length, albumId),
       fullName: group.title,
       columns: rowSize,
-      cells: codes.map(code => ({ code, number: getStickerDisplayNumber(code) }))
+      cells: codes.map(code => ({
+        code,
+        number: getStickerDisplayNumber(code)
+      }))
     }))
   })
 }
@@ -118,7 +142,10 @@ function buildVisualRows(orderMode = 'album', albumId = DEFAULT_ALBUM_ID) {
 function VisualRowLabel({ meta, fullName }) {
   if (meta.type === 'category') {
     return (
-      <div className="visual-report-row-label visual-report-row-label-category" title={fullName}>
+      <div
+        className="visual-report-row-label visual-report-row-label-category"
+        title={fullName}
+      >
         <span className="visual-report-category-badge">{meta.text}</span>
       </div>
     )
@@ -133,6 +160,7 @@ function VisualRowLabel({ meta, fullName }) {
             src={`https://flagcdn.com/w40/${meta.flagCode}.png`}
             alt=""
             loading="lazy"
+            referrerPolicy="no-referrer"
           />
         ) : (
           <span className={`visual-report-brand-badge ${meta.brand || ''}`}>
@@ -178,34 +206,51 @@ export default function VisualMissingReportPage() {
   }, [activeAlbum.id, orderMode, savedStickers])
 
   return (
-    <div className={`visual-report-page ${isPaniniReport ? 'visual-report-panini' : 'visual-report-multi-page'}`}>
+    <div
+      className={`visual-report-page ${
+        isPaniniReport ? 'visual-report-panini' : 'visual-report-multi-page'
+      }`}
+    >
       <div className="trade-report-actions no-print">
-        <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>
-          ÃƒÂ¢Ã¢â‚¬Â Ã‚Â Volver
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => navigate(-1)}
+        >
+          {'\u2190 Volver'}
         </button>
 
         <div className="visual-report-action-group">
-          <div className="visual-report-order-switch" role="group" aria-label="Orden del reporte">
+          <div
+            className="visual-report-order-switch"
+            role="group"
+            aria-label="Orden del reporte"
+          >
             <button
               type="button"
               className={orderMode === 'album' ? 'active' : ''}
               aria-pressed={orderMode === 'album'}
               onClick={() => setOrderMode('album')}
             >
-              Orden del ÃƒÆ’Ã‚Âlbum
+              {'Orden del \u00c1lbum'}
             </button>
+
             <button
               type="button"
               className={orderMode === 'alphabetical' ? 'active' : ''}
               aria-pressed={orderMode === 'alphabetical'}
               onClick={() => setOrderMode('alphabetical')}
             >
-              Orden AlfabÃƒÆ’Ã‚Â©tico
+              {'Orden Alfab\u00e9tico'}
             </button>
           </div>
 
-          <button type="button" className="btn-primary" onClick={() => window.print()}>
-            ÃƒÂ°Ã…Â¸Ã¢â‚¬â€œÃ‚Â¨ÃƒÂ¯Ã‚Â¸Ã‚Â Imprimir / Guardar PDF
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => window.print()}
+          >
+            {'\ud83d\udda8\ufe0f Imprimir / Guardar PDF'}
           </button>
         </div>
       </div>
@@ -220,10 +265,20 @@ export default function VisualMissingReportPage() {
           </div>
         </div>
 
-        <div className="visual-report-grid" aria-label="Mapa visual de figuritas obtenidas y faltantes">
+        <div
+          className="visual-report-grid"
+          aria-label="Mapa visual de figuritas obtenidas y faltantes"
+        >
           {rows.map(row => (
-            <div key={row.id} className="visual-report-row" title={row.fullName}>
-              <VisualRowLabel meta={row.labelMeta} fullName={row.fullName} />
+            <div
+              key={row.id}
+              className="visual-report-row"
+              title={row.fullName}
+            >
+              <VisualRowLabel
+                meta={row.labelMeta}
+                fullName={row.fullName}
+              />
 
               <div
                 className="visual-report-cells"
@@ -231,19 +286,43 @@ export default function VisualMissingReportPage() {
               >
                 {Array.from({ length: row.columns }, (_, index) => {
                   const cell = row.cells[index]
+
                   if (!cell) {
-                    return <span key={`blank-${index}`} className="visual-sticker-cell blank" />
+                    return (
+                      <span
+                        key={`blank-${index}`}
+                        className="visual-sticker-cell blank"
+                      />
+                    )
                   }
+
+                  const stateLabel = cell.owned
+                    ? cell.duplicates === 1
+                      ? 'Repetida (01) para cambiar'
+                      : cell.duplicates > 1
+                        ? 'Repetidas (02+) para cambiar'
+                        : 'Pegada'
+                    : 'Falta'
 
                   return (
                     <span
                       key={cell.code}
-                      className={`visual-sticker-cell ${cell.owned ? 'owned' : 'missing'} ${cell.duplicates === 1 ? 'duplicate-one' : ''} ${cell.duplicates > 1 ? 'duplicate-multi' : ''}`}
-                      title={`${cell.code} Ãƒâ€šÃ‚Â· ${cell.owned ? (cell.duplicates === 1 ? 'Repetida (01) para cambiar' : cell.duplicates > 1 ? 'Repetidas (02+) para cambiar' : 'Pegada') : 'Falta'}`}
+                      className={`visual-sticker-cell ${
+                        cell.owned ? 'owned' : 'missing'
+                      } ${
+                        cell.duplicates === 1 ? 'duplicate-one' : ''
+                      } ${
+                        cell.duplicates > 1 ? 'duplicate-multi' : ''
+                      }`}
+                      title={`${cell.code}\u00b7 ${stateLabel}`}
                     >
                       {cell.number}
+
                       {cell.duplicates > 1 ? (
-                        <sup className="visual-duplicate-count" aria-label={`${cell.duplicates} repetidas`}>
+                        <sup
+                          className="visual-duplicate-count"
+                          aria-label={`${cell.duplicates} repetidas`}
+                        >
                           {cell.duplicates}
                         </sup>
                       ) : null}

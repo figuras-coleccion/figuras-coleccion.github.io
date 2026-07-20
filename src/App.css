@@ -3312,7 +3312,7 @@ select:focus {
     grid-template-columns: 94px 1fr;
   }
 
-  .visual-report-category-badge {
+  .visual-report-page.visual-report-multi-page .visual-report-category-badge {
     font-size: 7.4px;
   }
 }
@@ -3330,52 +3330,104 @@ select:focus {
   .visual-report-page.visual-report-multi-page .visual-report-grid {
     display: block !important;
     min-height: 0 !important;
+    gap: 0 !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-row {
     display: grid !important;
-    grid-template-columns: 84px 1fr !important;
-    min-height: 18.4px !important;
-    height: auto !important;
-    gap: 1.4px !important;
-    margin-bottom: 0.75px !important;
+    grid-template-columns: 82px 1fr !important;
+    min-height: 13.5px !important;
+    height: 13.5px !important;
+    gap: 1.2px !important;
+    margin: 0 0 0.45px !important;
+    padding: 0 !important;
     align-items: stretch !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
+  .visual-report-page.visual-report-multi-page .visual-report-row:nth-child(5n):not(:last-child) {
+    padding-bottom: 0 !important;
+    margin-bottom: 0.7px !important;
+  }
+
   .visual-report-page.visual-report-multi-page .visual-report-row-label {
-    height: 18.4px !important;
-    min-height: 18.4px !important;
+    height: 13.5px !important;
+    min-height: 13.5px !important;
+    padding: 0.4px 1.5px 0.4px 3px !important;
+    grid-template-columns: 19px 4px 1fr !important;
+    column-gap: 0.7px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-row-label.visual-report-row-label-category {
-    padding: 1px 2px !important;
+    display: flex !important;
+    padding: 0.5px 1.5px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-category-badge {
-    height: 13px !important;
-    min-height: 13px !important;
-    padding: 1px 2px !important;
-    border-radius: 2px !important;
-    font-size: 5.8px !important;
+    height: 10.5px !important;
+    min-height: 10.5px !important;
+    padding: 0 1.5px !important;
+    border-radius: 1.8px !important;
+    font-size: 5.4px !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-label-media {
+    width: 19px !important;
+    min-width: 19px !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-flag-img {
+    width: 17px !important;
+    height: 11px !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-label-separator {
+    font-size: 6.5px !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-row-label strong {
+    font-size: 6.8px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-cells {
-    height: 18.4px !important;
-    min-height: 18.4px !important;
-    gap: 0.65px !important;
+    height: 13.5px !important;
+    min-height: 13.5px !important;
+    gap: 0.55px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-sticker-cell {
-    height: 18.4px !important;
-    min-height: 18.4px !important;
-    font-size: 9.2px !important;
+    height: 13.5px !important;
+    min-height: 13.5px !important;
+    border-radius: 2.2px !important;
+    font-size: 7.8px !important;
+    border-width: 0.55px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-footer {
+    margin-top: 0.8mm !important;
+    padding-top: 0.6mm !important;
+    font-size: 6.3px !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only {
+    margin-bottom: 1.2mm !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only > .visual-report-legend {
+    min-height: 4.2mm !important;
+    padding: 0.7mm 1.5mm !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-legend span {
+    font-size: 6.8px !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-legend i {
+    width: 8px !important;
+    height: 8px !important;
   }
 }
 /* REPORT_3REYES_A4_WIDTH_END */
