@@ -1,4 +1,5 @@
 export const FIGURITAS_EXPORT_PREFIX = '站疑'
+export const FIGURITAS_TRADE_PREFIX = '站救'
 export const FIGURITAS_EXPORT_BLOCKS = 3
 export const FIGURITAS_MASK_BYTES = 125
 export const PANINI_EXPORT_STICKER_COUNT = 994
@@ -151,6 +152,10 @@ export function isFiguritasExportPayload(value) {
 export async function decodeFiguritasExportPayload(value, orderedCodes) {
   const raw = String(value || '').trim()
   if (!raw) throw new Error('El QR no contiene información.')
+
+  if (raw.startsWith(FIGURITAS_TRADE_PREFIX)) {
+    throw new Error('Este es el QR de intercambio de Figuritas. Para importar tu colección usa el QR de “Exportar álbum”.')
+  }
 
   if (!raw.startsWith(FIGURITAS_EXPORT_PREFIX)) {
     throw new Error('Este no es un QR de “Exportar álbum” de Figuritas.')

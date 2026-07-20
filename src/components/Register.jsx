@@ -254,14 +254,14 @@ export default function Register() {
       <div className="register-page">
         <div className="register-card">
           <h1>👤 Completa tu perfil</h1>
-          <p className="subtitle">Tu cuenta ya está validada. Solo falta completar estos datos para usar el álbum.</p>
+          <p className="subtitle">Tu cuenta ya está validada. Solo falta completar estos datos para usar tus álbumes.</p>
           <form onSubmit={handleCompleteProfile}>
             <div className="form-group"><label>Nombre</label><input type="text" placeholder="Tu nombre" value={name} onChange={event => setName(event.target.value)} autoComplete="given-name" autoFocus /></div>
             <div className="form-group"><label>Apellido</label><input type="text" placeholder="Tu apellido" value={surname} onChange={event => setSurname(event.target.value)} autoComplete="family-name" /></div>
             <div className="form-group"><label>País</label><select value={countryCode} onChange={event => setCountryCode(event.target.value)}><option value="">Selecciona tu país</option>{COUNTRIES.map(country => <option key={country.code} value={country.code}>{country.name}</option>)}</select><small className="field-hint">Usaremos tu país para mostrarte matches relevantes.</small></div>
             {info && <p className="form-info">{info}</p>}
             {error && <p className="form-error">{error}</p>}
-            <button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Guardando...' : 'Guardar y entrar al álbum'}</button>
+            <button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Guardando...' : 'Guardar y continuar'}</button>
           </form>
           <button type="button" className="btn-link" disabled={submitting} onClick={logout}>Usar otra cuenta</button>
         </div>
@@ -281,7 +281,7 @@ export default function Register() {
           <button type="button" className="btn-primary" disabled={submitting} onClick={handleCheckVerification}>{submitting ? 'Verificando...' : 'Ya verifiqué mi correo'}</button>
           <button type="button" className="btn-secondary" disabled={submitting} onClick={handleResendVerification}>Reenviar correo de verificación</button>
           <button type="button" className="btn-link" disabled={submitting} onClick={logout}>Usar otro correo</button>
-          <p className="auth-note">Si no lo ves, revisa spam o promociones. El acceso al álbum se habilita cuando el correo esté verificado.</p>
+          <p className="auth-note">Si no lo ves, revisa spam o promociones. El acceso a tus álbumes se habilita cuando el correo esté verificado.</p>
         </div>
       </div>
     )
@@ -290,8 +290,8 @@ export default function Register() {
   return (
     <div className="register-page">
       <div className="register-card">
-        <h1>{activeAlbum.id === DEFAULT_ALBUM_ID ? '⚽ WORLD CUP 2026 - PANINI' : activeAlbum.shortTitle}</h1>
-        <p className="subtitle">{activeAlbum.id === DEFAULT_ALBUM_ID ? 'Mi álbum de figuritas' : 'Mi álbum de figuritas'}</p>
+        <h1>⚽ FIGURAS COLECCIÓN</h1>
+        <p className="subtitle">Todos tus álbumes en un solo lugar</p>
 
         {screen === 'login' ? (
           <div className="login-method-card auth-single-screen">
@@ -334,7 +334,7 @@ export default function Register() {
           </div>
         )}
 
-        <p className="auth-note">Cada usuario tiene su propio álbum. Tu avance queda guardado en la nube y separado por cuenta.</p>
+        <p className="auth-note">Cada usuario gestiona sus propios álbumes. Tu avance queda guardado en la nube y separado por cuenta.</p>
       </div>
     </div>
   )

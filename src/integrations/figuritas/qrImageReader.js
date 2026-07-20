@@ -1,30 +1,58 @@
+const HTML5_QR_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js'
 const JSQR_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js'
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024
-const MAX_CANDIDATES = 32
+const MAX_CANVAS_CANDIDATES = 36
+const MAX_HTML5_CANDIDATES = 18
+let html5QrPromise = null
 let jsQrPromise = null
 
-function loadJsQr() {
-  if (globalThis.jsQR) return Promise.resolve(globalThis.jsQR)
-  if (jsQrPromise) return jsQrPromise
+function loadScriptOnce(src, globalName, currentPromise, setPromise, errorMessage) {
+  if (globalThis[globalName]) return Promise.resolve(globalThis[globalName])
+  if (currentPromise) return currentPromise
 
-  jsQrPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${JSQR_SCRIPT}"]`)
+  const promise = new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`)
     if (existing) {
-      existing.addEventListener('load', () => resolve(globalThis.jsQR), { once: true })
-      existing.addEventListener('error', () => reject(new Error('No se pudo cargar el lector QR.')), { once: true })
+      if (globalThis[globalName]) {
+        resolve(globalThis[globalName])
+        return
+      }
+      existing.addEventListener('load', () => resolve(globalThis[globalName]), { once: true })
+      existing.addEventListener('error', () => reject(new Error(errorMessage)), { once: true })
       return
     }
 
     const script = document.createElement('script')
-    script.src = JSQR_SCRIPT
+    script.src = src
     script.async = true
     script.crossOrigin = 'anonymous'
-    script.onload = () => resolve(globalThis.jsQR)
-    script.onerror = () => reject(new Error('No se pudo cargar el lector QR.'))
+    script.onload = () => resolve(globalThis[globalName])
+    script.onerror = () => reject(new Error(errorMessage))
     document.head.appendChild(script)
   })
 
-  return jsQrPromise
+  setPromise(promise)
+  return promise
+}
+
+function loadHtml5Qr() {
+  return loadScriptOnce(
+    HTML5_QR_SCRIPT,
+    'Html5Qrcode',
+    html5QrPromise,
+    value => { html5QrPromise = value },
+    'No se pudo cargar el lector avanzado de QR.'
+  )
+}
+
+function loadJsQr() {
+  return loadScriptOnce(
+    JSQR_SCRIPT,
+    'jsQR',
+    jsQrPromise,
+    value => { jsQrPromise = value },
+    'No se pudo cargar el lector QR alternativo.'
+  )
 }
 
 async function loadBitmap(file) {
@@ -46,9 +74,9 @@ function drawCanvas(bitmap, crop = null, outputSize = 0) {
   const sourceWidth = bitmap.width || bitmap.naturalWidth
   const sourceHeight = bitmap.height || bitmap.naturalHeight
   const area = crop || { x: 0, y: 0, w: sourceWidth, h: sourceHeight }
-  const scale = outputSize
-    ? outputSize / Math.max(area.w, area.h)
-    : Math.min(1, 2000 / Math.max(area.w, area.h))
+  const longestSide = Math.max(area.w, area.h)
+  const targetLongestSide = outputSize || Math.min(2800, Math.max(1800, longestSide))
+  const scale = targetLongestSide / longestSide
   const width = Math.max(1, Math.round(area.w * scale))
   const height = Math.max(1, Math.round(area.h * scale))
 
@@ -64,32 +92,135 @@ function drawCanvas(bitmap, crop = null, outputSize = 0) {
   return canvas
 }
 
+function uniqueCropKey(crop) {
+  return [crop.x, crop.y, crop.w, crop.h].map(value => Math.round(value)).join(':')
+}
+
 function buildCandidateCanvases(bitmap) {
   const width = bitmap.width || bitmap.naturalWidth
   const height = bitmap.height || bitmap.naturalHeight
   const minSide = Math.min(width, height)
-  const candidates = [drawCanvas(bitmap)]
+  const candidates = [drawCanvas(bitmap, null, Math.min(3000, Math.max(width, height)))]
+  const seen = new Set()
 
-  for (const factor of [0.92, 0.78, 0.64, 0.5, 0.38]) {
-    const side = Math.max(180, minSide * factor)
+  const addSquare = (sideFactor, xRatio, yRatio, outputSize = 1800) => {
+    if (candidates.length >= MAX_CANVAS_CANDIDATES) return
+    const side = Math.max(220, Math.min(minSide, minSide * sideFactor))
     const maxX = Math.max(0, width - side)
     const maxY = Math.max(0, height - side)
-    const xSteps = factor >= 0.78 ? 2 : 3
-    const ySteps = height > width ? (factor >= 0.78 ? 4 : 6) : 3
+    const crop = {
+      x: maxX * xRatio,
+      y: maxY * yRatio,
+      w: side,
+      h: side
+    }
+    const key = uniqueCropKey(crop)
+    if (seen.has(key)) return
+    seen.add(key)
+    candidates.push(drawCanvas(bitmap, crop, outputSize))
+  }
 
-    for (let xIndex = 0; xIndex < xSteps; xIndex += 1) {
-      for (let yIndex = 0; yIndex < ySteps; yIndex += 1) {
-        const x = xSteps === 1 ? 0 : maxX * (xIndex / (xSteps - 1))
-        const y = ySteps === 1 ? 0 : maxY * (yIndex / (ySteps - 1))
-        candidates.push(
-          drawCanvas(bitmap, { x, y, w: side, h: side }, factor <= 0.64 ? 1500 : 1200)
-        )
-        if (candidates.length >= MAX_CANDIDATES) return candidates
+  // Capturas verticales de apps: el QR suele ocupar el centro superior.
+  for (const yRatio of [0.12, 0.18, 0.24, 0.3, 0.38, 0.48]) {
+    addSquare(0.66, 0.5, yRatio, 2000)
+  }
+  for (const yRatio of [0.08, 0.18, 0.28, 0.4]) {
+    addSquare(0.78, 0.5, yRatio, 1900)
+  }
+  for (const yRatio of [0.08, 0.2, 0.34, 0.5]) {
+    addSquare(0.56, 0.5, yRatio, 2100)
+  }
+
+  // Barrido adicional para capturas recortadas o QR desplazados.
+  for (const factor of [0.88, 0.7, 0.5, 0.38]) {
+    const xRatios = factor >= 0.7 ? [0, 0.5, 1] : [0.15, 0.5, 0.85]
+    const yRatios = height > width
+      ? [0, 0.18, 0.36, 0.58, 0.82]
+      : [0, 0.5, 1]
+
+    for (const xRatio of xRatios) {
+      for (const yRatio of yRatios) {
+        addSquare(factor, xRatio, yRatio, factor <= 0.5 ? 2200 : 1800)
+        if (candidates.length >= MAX_CANVAS_CANDIDATES) return candidates
       }
     }
   }
 
   return candidates
+}
+
+function canvasToFile(canvas, index) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob) {
+        reject(new Error('No se pudo preparar una región de la captura.'))
+        return
+      }
+      resolve(new File([blob], `qr-region-${index}.png`, { type: 'image/png' }))
+    }, 'image/png', 1)
+  })
+}
+
+function createHiddenReaderHost() {
+  const id = `figuritas-qr-reader-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const host = document.createElement('div')
+  host.id = id
+  host.setAttribute('aria-hidden', 'true')
+  Object.assign(host.style, {
+    position: 'fixed',
+    left: '-10000px',
+    top: '0',
+    width: '2px',
+    height: '2px',
+    overflow: 'hidden',
+    opacity: '0',
+    pointerEvents: 'none'
+  })
+  document.body.appendChild(host)
+  return { id, host }
+}
+
+async function detectWithHtml5Qr(file, canvases) {
+  let Html5Qrcode
+  try {
+    Html5Qrcode = await loadHtml5Qr()
+  } catch {
+    return ''
+  }
+  if (!Html5Qrcode) return ''
+
+  const { id, host } = createHiddenReaderHost()
+  const scanner = new Html5Qrcode(id, false)
+
+  try {
+    try {
+      const result = await scanner.scanFile(file, false)
+      if (result) return result
+    } catch {
+      // La captura completa puede contener demasiada interfaz. Se prueban regiones.
+    }
+
+    const candidateCount = Math.min(canvases.length, MAX_HTML5_CANDIDATES)
+    for (let index = 1; index < candidateCount; index += 1) {
+      try {
+        const candidateFile = await canvasToFile(canvases[index], index)
+        const result = await scanner.scanFile(candidateFile, false)
+        if (result) return result
+      } catch {
+        // Es normal que varias regiones no contengan el QR.
+      }
+      await new Promise(resolve => window.setTimeout(resolve, 0))
+    }
+  } finally {
+    try {
+      await scanner.clear()
+    } catch {
+      // La limpieza no debe ocultar una lectura correcta.
+    }
+    host.remove()
+  }
+
+  return ''
 }
 
 async function detectWithBarcodeDetector(canvases) {
@@ -99,17 +230,25 @@ async function detectWithBarcodeDetector(canvases) {
     const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
     for (const canvas of canvases) {
       const results = await detector.detect(canvas)
-      if (results?.[0]?.rawValue) return results[0].rawValue
+      const rawValue = results?.find(result => result?.rawValue)?.rawValue
+      if (rawValue) return rawValue
+      await new Promise(resolve => window.setTimeout(resolve, 0))
     }
   } catch {
-    // jsQR remains available as a fallback.
+    // Los otros motores permanecen disponibles.
   }
 
   return ''
 }
 
 async function detectWithJsQr(canvases) {
-  const jsQR = await loadJsQr()
+  let jsQR
+  try {
+    jsQR = await loadJsQr()
+  } catch {
+    return ''
+  }
+  if (!jsQR) return ''
 
   for (const canvas of canvases) {
     const context = canvas.getContext('2d', { willReadFrequently: true })
@@ -145,6 +284,12 @@ export async function decodeQrFromImageFile(file) {
 
   try {
     const candidates = buildCandidateCanvases(bitmap)
+
+    // Mismo motor empleado por Trueque QR, primero sobre la captura completa
+    // y luego sobre recortes automáticos de la pantalla.
+    const html5Result = await detectWithHtml5Qr(file, candidates)
+    if (html5Result) return html5Result
+
     const nativeResult = await detectWithBarcodeDetector(candidates)
     if (nativeResult) return nativeResult
 
@@ -152,7 +297,7 @@ export async function decodeQrFromImageFile(file) {
     if (jsQrResult) return jsQrResult
 
     throw new Error(
-      'No se encontró un QR legible. Usa una captura completa, nítida y sin recortar los bordes del código.'
+      'No se encontró un QR legible dentro de la captura. Verifica que el código se vea completo, nítido y con sus cuatro bordes.'
     )
   } finally {
     bitmap?.close?.()

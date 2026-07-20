@@ -273,7 +273,7 @@ export default function FiguritasImportModal({ onClose }) {
 
             {reading ? (
               <div className="figuritas-import-status loading" role="status">
-                Buscando el QR, validando sus tres bloques y descomprimiendo el estado del álbum…
+                Buscando el QR en toda la captura y en recortes automáticos, validando sus tres bloques y descomprimiendo el álbum…
               </div>
             ) : null}
 
