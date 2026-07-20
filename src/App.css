@@ -3436,9 +3436,8 @@ select:focus {
 
 /*
  * VISTA NORMAL DE 3 REYES
- * Todas las filas usan una cuadricula fija de 17 espacios.
- * Las filas con menos figuras dejan espacios vacios al final,
- * sin estirar ni desalinear sus celdas.
+ * Se conserva la previsualizacion aprobada:
+ * 17 espacios uniformes y titulos azules en mayusculas.
  */
 .visual-report-page.visual-report-multi-page .visual-report-cells {
   grid-template-columns: repeat(17, minmax(0, 1fr)) !important;
@@ -3448,6 +3447,11 @@ select:focus {
   text-transform: uppercase !important;
 }
 
+/*
+ * SOLO PDF / IMPRESION
+ * La leyenda empieza en el margen superior y las 59 filas
+ * ocupan exactamente el resto de la hoja A4.
+ */
 @media print {
   @page visualReport {
     size: A4 portrait;
@@ -3459,23 +3463,29 @@ select:focus {
     height: 287mm !important;
     min-height: 287mm !important;
     max-height: 287mm !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    overflow: visible !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    align-content: stretch !important;
+    justify-content: stretch !important;
+    overflow: hidden !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     padding: 0 !important;
+    margin: 0 !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only {
-    flex: 0 0 auto !important;
-    margin-bottom: 0.35mm !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 0 0.55mm 0 !important;
+    padding: 0 !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only > .visual-report-legend {
-    min-height: 3.15mm !important;
-    padding: 0.24mm 1.05mm !important;
+    width: 100% !important;
+    min-height: 3.3mm !important;
+    padding: 0.28mm 1.05mm !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-legend span {
@@ -3487,33 +3497,27 @@ select:focus {
     height: 6.4px !important;
   }
 
-  /*
-   * 59 filas totales:
-   * 1 Estadios + 48 paises + 3 especiales + 4 Repechaje + 3 Escudos.
-   *
-   * Se aumenta suavemente la altura a 4.48mm y se centra todo el bloque
-   * dentro del A4. Asi los margenes superior e inferior quedan equilibrados
-   * sin ocultar la tercera fila de Escudos.
-   */
   .visual-report-page.visual-report-multi-page .visual-report-grid {
-    flex: 0 0 auto !important;
+    grid-row: 2 !important;
     width: 100% !important;
+    height: 100% !important;
     min-height: 0 !important;
-    height: auto !important;
-    display: flex !important;
-    flex-direction: column !important;
+    max-height: none !important;
+    display: grid !important;
+    grid-template-rows: repeat(59, minmax(0, 1fr)) !important;
     gap: 0.04mm !important;
-    overflow: visible !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-row,
   .visual-report-page.visual-report-multi-page .visual-report-row:nth-child(5n):not(:last-child) {
-    flex: 0 0 4.48mm !important;
     width: 100% !important;
     min-width: 0 !important;
-    height: 4.48mm !important;
-    min-height: 4.48mm !important;
-    max-height: 4.48mm !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
     margin: 0 !important;
     padding: 0 !important;
     display: grid !important;
@@ -3521,7 +3525,7 @@ select:focus {
     gap: 1.1px !important;
     align-items: stretch !important;
     border-bottom-width: 0.3px !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
@@ -3529,12 +3533,12 @@ select:focus {
   .visual-report-page.visual-report-multi-page .visual-report-row-label {
     width: 100% !important;
     min-width: 0 !important;
-    height: 4.48mm !important;
-    min-height: 4.48mm !important;
-    max-height: 4.48mm !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
     align-self: stretch !important;
-    padding-top: 0.1px !important;
-    padding-bottom: 0.1px !important;
+    padding-top: 0.05px !important;
+    padding-bottom: 0.05px !important;
     overflow: hidden !important;
   }
 
@@ -3547,39 +3551,35 @@ select:focus {
     height: 100% !important;
     min-height: 0 !important;
     padding: 0 1.5px !important;
-    font-size: 5.05px !important;
+    font-size: 5px !important;
     text-transform: uppercase !important;
   }
 
-  /*
-   * La impresion usa la misma cuadricula de 17 espacios que la vista normal.
-   * Todas las celdas mantienen exactamente el mismo ancho.
-   */
   .visual-report-page.visual-report-multi-page .visual-report-cells {
     width: 100% !important;
     min-width: 0 !important;
-    height: 4.48mm !important;
-    min-height: 4.48mm !important;
-    max-height: 4.48mm !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
     align-self: stretch !important;
     display: grid !important;
     grid-template-columns: repeat(17, minmax(0, 1fr)) !important;
     grid-auto-flow: row !important;
     gap: 0.5px !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-sticker-cell {
     width: 100% !important;
     min-width: 0 !important;
-    height: 4.48mm !important;
-    min-height: 4.48mm !important;
-    max-height: 4.48mm !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
     align-self: stretch !important;
     padding: 0 !important;
     border-radius: 1.8px !important;
     border-width: 0.45px !important;
-    font-size: 7.2px !important;
+    font-size: 7.1px !important;
     line-height: 1 !important;
     overflow: hidden !important;
   }
