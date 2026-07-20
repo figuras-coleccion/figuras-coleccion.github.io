@@ -1,6 +1,6 @@
 {
-  "name": "Panini World Cup Tracker",
-  "short_name": "PaniniWC",
+  "name": "Figuras Colección",
+  "short_name": "Figuras",
   "start_url": "/panini2026/",
   "display": "standalone",
   "background_color": "#1a1a2e",
