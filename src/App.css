@@ -3436,7 +3436,8 @@ select:focus {
 
 /*
  * VISTA NORMAL DE 3 REYES
- * Se mantiene exactamente como fue aprobada.
+ * Se conserva exactamente como fue aprobada:
+ * 17 espacios uniformes y titulos azules en mayusculas.
  */
 .visual-report-page.visual-report-multi-page .visual-report-cells {
   grid-template-columns: repeat(17, minmax(0, 1fr)) !important;
@@ -3449,13 +3450,12 @@ select:focus {
 /*
  * SOLO PDF / IMPRESION
  *
- * 3 Reyes tiene exactamente 59 filas:
+ * El alto util se limita a un maximo seguro de 270mm.
+ * Dentro de ese alto se distribuyen exactamente 59 tracks:
  * 1 Estadios + 48 paises + 3 especiales + 4 Repechaje + 3 Escudos.
  *
- * La causa del recorte era height:100% aplicado a cada fila dentro
- * de una cuadricula de 59 tracks. Cada fila intentaba medir toda la
- * altura del contenedor. Ahora cada fila usa height:auto y ocupa solo
- * su track. Tambien se eliminan todas las divisiones horizontales.
+ * Las filas usan height:auto para ocupar solo su track.
+ * Esto evita que Chromium mande T-17 a T-48 fuera de la primera hoja.
  */
 @media print {
   @page visualReport {
@@ -3465,9 +3465,9 @@ select:focus {
 
   .visual-report-page.visual-report-multi-page .visual-report-sheet {
     width: 100% !important;
-    height: 286.5mm !important;
-    min-height: 286.5mm !important;
-    max-height: 286.5mm !important;
+    height: min(270mm, calc(100vh - 1mm)) !important;
+    min-height: 0 !important;
+    max-height: min(270mm, calc(100vh - 1mm)) !important;
     display: grid !important;
     grid-template-rows: auto minmax(0, 1fr) !important;
     align-content: stretch !important;
@@ -3483,23 +3483,23 @@ select:focus {
     grid-row: 1 !important;
     width: 100% !important;
     min-height: 0 !important;
-    margin: 0 0 0.35mm 0 !important;
+    margin: 0 0 0.3mm 0 !important;
     padding: 0 !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only > .visual-report-legend {
     width: 100% !important;
-    min-height: 3.05mm !important;
-    padding: 0.2mm 1mm !important;
+    min-height: 2.9mm !important;
+    padding: 0.15mm 1mm !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-legend span {
-    font-size: 6px !important;
+    font-size: 5.9px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-legend i {
-    width: 6.2px !important;
-    height: 6.2px !important;
+    width: 6px !important;
+    height: 6px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-grid {
@@ -3517,8 +3517,7 @@ select:focus {
     padding: 0 !important;
   }
 
-  .visual-report-page.visual-report-multi-page .visual-report-row,
-  .visual-report-page.visual-report-multi-page .visual-report-row:nth-child(5n):not(:last-child) {
+  .visual-report-page.visual-report-multi-page .visual-report-row {
     width: 100% !important;
     min-width: 0 !important;
     height: auto !important;
@@ -3528,13 +3527,42 @@ select:focus {
     padding: 0 !important;
     display: grid !important;
     grid-template-columns: 82px minmax(0, 1fr) !important;
-    gap: 1.1px !important;
+    gap: 1px !important;
     align-items: stretch !important;
     border: 0 !important;
-    border-bottom: 0 !important;
     overflow: hidden !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  /*
+   * Se restauran las divisiones horizontales entre los paises.
+   */
+  .visual-report-page.visual-report-multi-page .visual-report-row:nth-child(5n):not(:last-child) {
+    border-bottom: 0.45px solid rgba(148, 163, 184, 0.58) !important;
+  }
+
+  /*
+   * Dentro del bloque azul no hay separaciones horizontales:
+   * CAMPEONES, 1ER MUNDIAL, CLASIFICADOS, REPECHAJE y ESCUDOS.
+   */
+  .visual-report-page.visual-report-multi-page .visual-report-row:has(.visual-report-row-label-category) {
+    border-top: 0 !important;
+    border-bottom: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /*
+   * Se conserva una sola division entre el ultimo pais y el inicio
+   * del bloque azul.
+   */
+  .visual-report-page.visual-report-multi-page
+  .visual-report-row:not(:has(.visual-report-row-label-category))
+  + .visual-report-row:has(.visual-report-row-label-category) {
+    border-top: 0.5px solid rgba(148, 163, 184, 0.58) !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-row-label {
@@ -3548,8 +3576,6 @@ select:focus {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     overflow: hidden !important;
-    border-top: 0.35px solid #cbd5e1 !important;
-    border-bottom: 0.35px solid #cbd5e1 !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-row-label.visual-report-row-label-category {
@@ -3561,9 +3587,9 @@ select:focus {
     height: 100% !important;
     min-height: 0 !important;
     margin: 0 !important;
-    padding: 0 1.5px !important;
-    border-radius: 1.5px !important;
-    font-size: 4.8px !important;
+    padding: 0 1.3px !important;
+    border-radius: 1.4px !important;
+    font-size: 4.55px !important;
     text-transform: uppercase !important;
   }
 
@@ -3577,7 +3603,7 @@ select:focus {
     display: grid !important;
     grid-template-columns: repeat(17, minmax(0, 1fr)) !important;
     grid-auto-flow: row !important;
-    gap: 0.45px !important;
+    gap: 0.4px !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
@@ -3592,9 +3618,9 @@ select:focus {
     align-self: stretch !important;
     margin: 0 !important;
     padding: 0 !important;
-    border-radius: 1.5px !important;
-    border-width: 0.4px !important;
-    font-size: 6.65px !important;
+    border-radius: 1.35px !important;
+    border-width: 0.35px !important;
+    font-size: 6.15px !important;
     line-height: 1 !important;
     overflow: hidden !important;
   }
