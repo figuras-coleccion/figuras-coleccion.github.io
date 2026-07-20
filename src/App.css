@@ -3431,3 +3431,84 @@ select:focus {
   }
 }
 /* REPORT_3REYES_A4_WIDTH_END */
+
+/* REPORT_3REYES_PDF_FULL_HEIGHT_START */
+@media print {
+  @page visualReport {
+    size: A4 portrait;
+    margin: 5mm 5mm;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-sheet {
+    width: 100% !important;
+    height: 287mm !important;
+    min-height: 287mm !important;
+    max-height: 287mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only {
+    flex: 0 0 auto !important;
+    margin-bottom: 1.2mm !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-grid {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.45px !important;
+    overflow: hidden !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-row {
+    flex: 1 1 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: grid !important;
+    grid-template-columns: 82px 1fr !important;
+    gap: 1.2px !important;
+    align-items: stretch !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-row:nth-child(5n):not(:last-child) {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-row-label {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    align-self: stretch !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-cells {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    align-self: stretch !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-sticker-cell {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    align-self: stretch !important;
+  }
+
+  .visual-report-page.visual-report-multi-page .visual-report-footer {
+    display: none !important;
+  }
+}
+/* REPORT_3REYES_PDF_FULL_HEIGHT_END */
