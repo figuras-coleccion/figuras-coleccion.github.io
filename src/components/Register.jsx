@@ -291,13 +291,13 @@ export default function Register() {
     <div className="register-page">
       <div className="register-card">
         <h1>{activeAlbum.id === DEFAULT_ALBUM_ID ? '⚽ WORLD CUP 2026 - PANINI' : activeAlbum.shortTitle}</h1>
-        <p className="subtitle">{activeAlbum.id === DEFAULT_ALBUM_ID ? 'Mi album de figuritas' : 'Mi álbum de figuritas'}</p>
+        <p className="subtitle">{activeAlbum.id === DEFAULT_ALBUM_ID ? 'Mi álbum de figuritas' : 'Mi álbum de figuritas'}</p>
 
         {screen === 'login' ? (
           <div className="login-method-card auth-single-screen">
             <button type="button" className="btn-google" disabled={submitting} onClick={handleGoogleAccess}>
               <span className="google-icon">G</span>
-              {submitting ? 'Conectando...' : 'Continuar con Google'}
+              {submitting ? 'Conectando...' : 'Ingresar con Google'}
             </button>
             <p className="google-access-note">El mismo botón sirve para ingresar o crear tu cuenta con Google.</p>
 
