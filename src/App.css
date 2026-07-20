@@ -3433,6 +3433,21 @@ select:focus {
 /* REPORT_3REYES_A4_WIDTH_END */
 
 /* REPORT_3REYES_PDF_FULL_HEIGHT_START */
+
+/*
+ * VISTA NORMAL DE 3 REYES
+ * Todas las filas usan una cuadricula fija de 17 espacios.
+ * Las filas con menos figuras dejan espacios vacios al final,
+ * sin estirar ni desalinear sus celdas.
+ */
+.visual-report-page.visual-report-multi-page .visual-report-cells {
+  grid-template-columns: repeat(17, minmax(0, 1fr)) !important;
+}
+
+.visual-report-page.visual-report-multi-page .visual-report-category-badge {
+  text-transform: uppercase !important;
+}
+
 @media print {
   @page visualReport {
     size: A4 portrait;
@@ -3446,6 +3461,7 @@ select:focus {
     max-height: 287mm !important;
     display: flex !important;
     flex-direction: column !important;
+    justify-content: center !important;
     overflow: visible !important;
     box-shadow: none !important;
     border-radius: 0 !important;
@@ -3454,29 +3470,30 @@ select:focus {
 
   .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only {
     flex: 0 0 auto !important;
-    margin-bottom: 0.4mm !important;
+    margin-bottom: 0.35mm !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-summary.visual-report-summary-legend-only > .visual-report-legend {
-    min-height: 3.35mm !important;
-    padding: 0.3mm 1.1mm !important;
+    min-height: 3.15mm !important;
+    padding: 0.24mm 1.05mm !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-legend span {
-    font-size: 6.2px !important;
+    font-size: 6.15px !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-legend i {
-    width: 6.5px !important;
-    height: 6.5px !important;
+    width: 6.4px !important;
+    height: 6.4px !important;
   }
 
   /*
-   * 3 Reyes genera 59 filas:
+   * 59 filas totales:
    * 1 Estadios + 48 paises + 3 especiales + 4 Repechaje + 3 Escudos.
    *
-   * Se reduce ligeramente la altura de cada fila para que Chromium
-   * no recorte la ultima fila T-33 a T-48 dentro del area A4 util.
+   * Se aumenta suavemente la altura a 4.48mm y se centra todo el bloque
+   * dentro del A4. Asi los margenes superior e inferior quedan equilibrados
+   * sin ocultar la tercera fila de Escudos.
    */
   .visual-report-page.visual-report-multi-page .visual-report-grid {
     flex: 0 0 auto !important;
@@ -3485,18 +3502,18 @@ select:focus {
     height: auto !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 0.08mm !important;
+    gap: 0.04mm !important;
     overflow: visible !important;
   }
 
   .visual-report-page.visual-report-multi-page .visual-report-row,
   .visual-report-page.visual-report-multi-page .visual-report-row:nth-child(5n):not(:last-child) {
-    flex: 0 0 4.36mm !important;
+    flex: 0 0 4.48mm !important;
     width: 100% !important;
     min-width: 0 !important;
-    height: 4.36mm !important;
-    min-height: 4.36mm !important;
-    max-height: 4.36mm !important;
+    height: 4.48mm !important;
+    min-height: 4.48mm !important;
+    max-height: 4.48mm !important;
     margin: 0 !important;
     padding: 0 !important;
     display: grid !important;
@@ -3512,9 +3529,9 @@ select:focus {
   .visual-report-page.visual-report-multi-page .visual-report-row-label {
     width: 100% !important;
     min-width: 0 !important;
-    height: 4.36mm !important;
-    min-height: 4.36mm !important;
-    max-height: 4.36mm !important;
+    height: 4.48mm !important;
+    min-height: 4.48mm !important;
+    max-height: 4.48mm !important;
     align-self: stretch !important;
     padding-top: 0.1px !important;
     padding-bottom: 0.1px !important;
@@ -3530,20 +3547,20 @@ select:focus {
     height: 100% !important;
     min-height: 0 !important;
     padding: 0 1.5px !important;
-    font-size: 5px !important;
+    font-size: 5.05px !important;
+    text-transform: uppercase !important;
   }
 
   /*
-   * Todas las filas conservan una cuadricula fija de 17 espacios.
-   * Las filas con 16 o menos figuras dejan espacios vacios al final,
-   * sin estirar ni desalinear el ancho de las celdas.
+   * La impresion usa la misma cuadricula de 17 espacios que la vista normal.
+   * Todas las celdas mantienen exactamente el mismo ancho.
    */
   .visual-report-page.visual-report-multi-page .visual-report-cells {
     width: 100% !important;
     min-width: 0 !important;
-    height: 4.36mm !important;
-    min-height: 4.36mm !important;
-    max-height: 4.36mm !important;
+    height: 4.48mm !important;
+    min-height: 4.48mm !important;
+    max-height: 4.48mm !important;
     align-self: stretch !important;
     display: grid !important;
     grid-template-columns: repeat(17, minmax(0, 1fr)) !important;
@@ -3555,14 +3572,14 @@ select:focus {
   .visual-report-page.visual-report-multi-page .visual-sticker-cell {
     width: 100% !important;
     min-width: 0 !important;
-    height: 4.36mm !important;
-    min-height: 4.36mm !important;
-    max-height: 4.36mm !important;
+    height: 4.48mm !important;
+    min-height: 4.48mm !important;
+    max-height: 4.48mm !important;
     align-self: stretch !important;
     padding: 0 !important;
     border-radius: 1.8px !important;
     border-width: 0.45px !important;
-    font-size: 7.1px !important;
+    font-size: 7.2px !important;
     line-height: 1 !important;
     overflow: hidden !important;
   }
