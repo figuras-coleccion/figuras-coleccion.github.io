@@ -85,6 +85,37 @@ function getInitials(profile = {}) {
   return name.slice(0, 1).toUpperCase()
 }
 
+function buildAlphabeticalTradeCodes(orderedCodes = []) {
+  const validCodes = new Set(orderedCodes)
+  const groups = buildAlbumGroups()
+
+  const leadingGroups = groups.filter(group => group.placement === 'leading')
+  const countryGroups = groups
+    .filter(group => group.placement === 'country')
+    .sort((a, b) => String(a.shortCode || a.title || '').localeCompare(
+      String(b.shortCode || b.title || ''),
+      'es',
+      { sensitivity: 'base' }
+    ))
+  const trailingGroups = groups.filter(group => group.placement === 'trailing')
+
+  const alphabeticalCodes = [
+    ...leadingGroups,
+    ...countryGroups,
+    ...trailingGroups
+  ]
+    .flatMap(group => group.codes)
+    .filter(code => validCodes.has(code))
+
+  const includedCodes = new Set(alphabeticalCodes)
+
+  // Conserva cualquier código futuro no clasificado, sin perderlo.
+  return [
+    ...alphabeticalCodes,
+    ...orderedCodes.filter(code => !includedCodes.has(code))
+  ]
+}
+
 function TradeToken({ code, selected, duplicates, onToggle, mode, editingLocked }) {
   const irregular = isIrregularStickerCode(code)
 
@@ -679,6 +710,10 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
 
 function ManualTradePanel({ stickers, orderedCodes, editingLocked, applyManualTrade }) {
   const navigate = useNavigate()
+  const alphabeticalCodes = useMemo(
+    () => buildAlphabeticalTradeCodes(orderedCodes),
+    [orderedCodes]
+  )
   const [receiveSelection, setReceiveSelection] = useState(() => new Set())
   const [deliverSelection, setDeliverSelection] = useState(() => new Set())
   const [processing, setProcessing] = useState(false)
@@ -686,13 +721,15 @@ function ManualTradePanel({ stickers, orderedCodes, editingLocked, applyManualTr
   const [successSummary, setSuccessSummary] = useState(null)
 
   const missingCodes = useMemo(
-    () => orderedCodes.filter(code => !stickers[code]?.owned),
-    [orderedCodes, stickers]
+    () => alphabeticalCodes.filter(code => !stickers[code]?.owned),
+    [alphabeticalCodes, stickers]
   )
 
   const duplicateCodes = useMemo(
-    () => orderedCodes.filter(code => stickers[code]?.owned && Number(stickers[code]?.duplicates || 0) > 0),
-    [orderedCodes, stickers]
+    () => alphabeticalCodes.filter(
+      code => stickers[code]?.owned && Number(stickers[code]?.duplicates || 0) > 0
+    ),
+    [alphabeticalCodes, stickers]
   )
 
   const receiveCount = receiveSelection.size
