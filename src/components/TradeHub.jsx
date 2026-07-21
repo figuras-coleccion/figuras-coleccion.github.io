@@ -541,13 +541,6 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
       <div id="panini-file-qr-reader" className="qr-file-reader" aria-hidden="true" />
 
       <section className="qr-own-card">
-        <div className="qr-own-head">
-          <div>
-            <h3>Mi QR de intercambio</h3>
-            <p>La otra persona verá tu álbum y tus repetidas actualizadas.</p>
-          </div>
-          <span className="qr-live-pill">● Activo</span>
-        </div>
 
         {figuritasCompatible && (
           <div className="qr-mode-switch" role="group" aria-label="Tipo de código QR">
