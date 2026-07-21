@@ -1,12 +1,23 @@
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 
-export function createLocalQrDataUrl(value, size = 430) {
+export function createLocalQrDataUrl(
+  value,
+  size = 430,
+  {
+    errorCorrectionLevel = 'H',
+    margin = 4
+  } = {}
+) {
   return QRCode.toDataURL(value, {
-    errorCorrectionLevel: 'H',
-    margin: 4,
+    errorCorrectionLevel,
+    margin,
     width: size,
-    type: 'image/png'
+    type: 'image/png',
+    color: {
+      dark: '#000000',
+      light: '#ffffff'
+    }
   })
 }
 
@@ -15,6 +26,8 @@ export default function LocalQrCode({
   size = 430,
   className = '',
   alt = 'Código QR',
+  errorCorrectionLevel = 'H',
+  margin = 4,
   onReady,
   onError
 }) {
@@ -28,7 +41,10 @@ export default function LocalQrCode({
 
     if (!value) return () => { cancelled = true }
 
-    createLocalQrDataUrl(value, size)
+    createLocalQrDataUrl(value, size, {
+      errorCorrectionLevel,
+      margin
+    })
       .then(dataUrl => {
         if (cancelled) return
         setSource(dataUrl)
@@ -44,7 +60,14 @@ export default function LocalQrCode({
     return () => {
       cancelled = true
     }
-  }, [onError, onReady, size, value])
+  }, [
+    errorCorrectionLevel,
+    margin,
+    onError,
+    onReady,
+    size,
+    value
+  ])
 
   if (error) {
     return <div className="local-qr-error" role="alert">{error}</div>

@@ -493,3 +493,31 @@ export async function encodeFiguritasTradeConfirmationPayload({
 
   return `${FIGURITAS_TRADE_CONFIRMATION_PREFIX}${hostDeliversBlock};${hostReceivesBlock}`
 }
+export async function encodeFiguritasTradePayload({
+  hostMissingCodes = [],
+  hostRepeatedCodes = []
+} = {}, orderedCodes) {
+  const missingIndices = codesToIndices(hostMissingCodes, orderedCodes)
+  const repeatedIndices = codesToIndices(hostRepeatedCodes, orderedCodes)
+  const missingSet = new Set(missingIndices)
+  const overlap = repeatedIndices.filter(index => missingSet.has(index))
+
+  if (overlap.length > 0) {
+    throw new Error(
+      `No se puede generar el QR: ${overlap.length} posiciones figuran como faltantes y repetidas a la vez.`
+    )
+  }
+
+  const [missingBlock, repeatedBlock] = await Promise.all([
+    deflateGzipBlock(
+      createMaskFromIndices(missingIndices),
+      'figuritas faltantes'
+    ),
+    deflateGzipBlock(
+      createMaskFromIndices(repeatedIndices),
+      'figuritas repetidas'
+    )
+  ])
+
+  return `${FIGURITAS_TRADE_PREFIX}${missingBlock};${repeatedBlock}`
+}

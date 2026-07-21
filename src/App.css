@@ -3630,3 +3630,67 @@ select:focus {
   }
 }
 /* REPORT_3REYES_PDF_FULL_HEIGHT_END */
+
+/* QR_FIGURITAS_SWITCH_START */
+.qr-mode-switch{
+  width:min(100%,430px);
+  margin:14px auto 10px;
+  padding:4px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+  border:1px solid #cbd5e1;
+  border-radius:14px;
+  background:#eef2f7
+}
+.qr-mode-switch button{
+  min-height:42px;
+  padding:8px 10px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:#475569;
+  font-size:11px;
+  font-weight:900
+}
+.qr-mode-switch button.active{
+  background:#2449b8;
+  color:#fff;
+  box-shadow:0 5px 16px rgba(36,73,184,.22)
+}
+.qr-mode-switch button:disabled{
+  opacity:.45;
+  cursor:not-allowed
+}
+.qr-image-frame.figuritas-compatible{
+  padding:16px;
+  background:#fff
+}
+.qr-image-frame.figuritas-compatible .qr-code-image{
+  border-radius:0;
+  image-rendering:pixelated
+}
+.qr-mode-note{
+  max-width:430px;
+  margin:8px auto 0;
+  color:#64748b;
+  font-size:10px;
+  font-weight:750;
+  line-height:1.45;
+  text-align:center
+}
+.qr-mode-error{
+  max-width:430px;
+  margin:8px auto 0;
+  padding:9px 11px;
+  border-radius:12px;
+  background:#fff0f0;
+  color:#b42318;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.45
+}
+#panini-live-qr-reader video{
+  object-fit:cover
+}
+/* QR_FIGURITAS_SWITCH_END */

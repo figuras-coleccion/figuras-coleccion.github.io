@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Html5Qrcode } from 'html5-qrcode'
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useUser } from '../context/UserContext'
 import { useStickers } from '../context/StickersContext'
@@ -12,7 +12,7 @@ import { albumRoute } from '../appRoutes'
 import FiguritasTradeModal from './FiguritasTradeModal'
 import LocalQrCode from './LocalQrCode'
 import { decodeQrFromImageFile } from '../integrations/figuritas/qrImageReader'
-import { classifyFiguritasPayload } from '../integrations/figuritas/exportProtocol'
+import { classifyFiguritasPayload, encodeFiguritasTradePayload } from '../integrations/figuritas/exportProtocol'
 
 async function ensureQrScannerLibrary() {
   return Html5Qrcode
@@ -180,12 +180,66 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
   const [qrError, setQrError] = useState('')
   const [match, setMatch] = useState(null)
   const [loadedPartnerId, setLoadedPartnerId] = useState('')
+  const [qrMode, setQrMode] = useState('collection')
+  const [figuritasQrPayload, setFiguritasQrPayload] = useState('')
+  const [figuritasQrError, setFiguritasQrError] = useState('')
 
   const myName = `${user?.name || ''} ${user?.surname || ''}`.trim() || 'Mi cuenta'
   const qrPayload = useMemo(() => {
     const basePath = import.meta.env.BASE_URL || '/'
     return `${window.location.origin}${basePath}trade?qrUser=${encodeURIComponent(user.id)}&album=${encodeURIComponent(activeAlbumId)}`
   }, [activeAlbumId, user.id])
+
+  const figuritasCompatible = activeAlbumId === DEFAULT_ALBUM_ID
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!figuritasCompatible) {
+      setQrMode('collection')
+      setFiguritasQrPayload('')
+      setFiguritasQrError('')
+      return () => { cancelled = true }
+    }
+
+    if (!orderedCodes.length) {
+      setFiguritasQrPayload('')
+      return () => { cancelled = true }
+    }
+
+    const hostMissingCodes = orderedCodes.filter(
+      code => !Boolean(stickers[code]?.owned)
+    )
+    const hostRepeatedCodes = orderedCodes.filter(
+      code => Number(stickers[code]?.duplicates || 0) > 0
+    )
+
+    setFiguritasQrError('')
+
+    encodeFiguritasTradePayload({
+      hostMissingCodes,
+      hostRepeatedCodes
+    }, orderedCodes)
+      .then(payload => {
+        if (!cancelled) setFiguritasQrPayload(payload)
+      })
+      .catch(error => {
+        console.error('No se pudo generar el QR inicial de Figuritas:', error)
+        if (cancelled) return
+        setFiguritasQrPayload('')
+        setFiguritasQrError(
+          error?.message || 'No se pudo generar el QR compatible con Figuritas.'
+        )
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [figuritasCompatible, orderedCodes, stickers])
+
+  const displayedQrPayload = qrMode === 'figuritas'
+    ? figuritasQrPayload
+    : qrPayload
 
   const albumIconUrl = useMemo(() => {
     const basePath = import.meta.env.BASE_URL || '/'
@@ -353,8 +407,8 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
       permissionStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 1280 }
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
         },
         audio: false
       })
@@ -373,16 +427,26 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
       const rearCamera = cameras.find(camera => /back|rear|environment|trasera/i.test(camera.label || ''))
       const cameraId = activeDeviceId || rearCamera?.id || cameras[cameras.length - 1]?.id
 
-      const scanner = new Html5Qrcode('panini-live-qr-reader', false)
+      const scanner = new Html5Qrcode('panini-live-qr-reader', {
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        },
+        verbose: false
+      })
       scannerRef.current = scanner
-      const boxSize = Math.max(190, Math.min(270, window.innerWidth - 82))
+      const scanBox = (viewfinderWidth, viewfinderHeight) => {
+        const available = Math.min(viewfinderWidth, viewfinderHeight)
+        const size = Math.max(220, Math.floor(available * 0.84))
+        return { width: size, height: size }
+      }
 
       await scanner.start(
         cameraId || { facingMode: { ideal: 'environment' } },
         {
-          fps: 12,
-          qrbox: { width: boxSize, height: boxSize },
-          aspectRatio: 1,
+          fps: 20,
+          qrbox: scanBox,
+          aspectRatio: 4 / 3,
           disableFlip: false
         },
         decodedText => {
@@ -392,6 +456,20 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
           // Los intentos sin lectura son normales mientras el visor está abierto.
         }
       )
+
+      const liveVideo = document.querySelector('#panini-live-qr-reader video')
+      const liveTrack = liveVideo?.srcObject?.getVideoTracks?.()[0]
+      const capabilities = liveTrack?.getCapabilities?.()
+
+      if (
+        liveTrack?.applyConstraints &&
+        Array.isArray(capabilities?.focusMode) &&
+        capabilities.focusMode.includes('continuous')
+      ) {
+        await liveTrack.applyConstraints({
+          advanced: [{ focusMode: 'continuous' }]
+        }).catch(() => {})
+      }
 
       setScannerStatus('Apunta la cámara al QR de la otra persona.')
     } catch (error) {
@@ -470,14 +548,57 @@ function QrTradePanel({ user, stickers, orderedCodes, initialPartnerId, onPartne
           <span className="qr-live-pill">● Activo</span>
         </div>
 
-        <div className="qr-image-frame">
-          <LocalQrCode value={qrPayload} size={360} className="qr-code-image" alt={`Código QR de intercambio de ${activeAlbumTitle}`} />
-          {albumIconUrl && (
+        {figuritasCompatible && (
+          <div className="qr-mode-switch" role="group" aria-label="Tipo de código QR">
+            <button
+              type="button"
+              className={qrMode === 'collection' ? 'active' : ''}
+              aria-pressed={qrMode === 'collection'}
+              onClick={() => setQrMode('collection')}
+            >
+              Figuras Colección
+            </button>
+            <button
+              type="button"
+              className={qrMode === 'figuritas' ? 'active' : ''}
+              aria-pressed={qrMode === 'figuritas'}
+              disabled={!figuritasQrPayload}
+              onClick={() => setQrMode('figuritas')}
+            >
+              App Figuritas
+            </button>
+          </div>
+        )}
+
+        <div className={`qr-image-frame ${qrMode === 'figuritas' ? 'figuritas-compatible' : ''}`}>
+          <LocalQrCode
+            value={displayedQrPayload}
+            size={qrMode === 'figuritas' ? 430 : 360}
+            className="qr-code-image"
+            alt={
+              qrMode === 'figuritas'
+                ? 'Código QR compatible con App Figuritas'
+                : `Código QR de intercambio de ${activeAlbumTitle}`
+            }
+            errorCorrectionLevel={qrMode === 'figuritas' ? 'M' : 'H'}
+            margin={4}
+          />
+          {qrMode === 'collection' && albumIconUrl && (
             <span className="qr-album-icon-overlay" aria-hidden="true">
               <img src={albumIconUrl} alt="" />
             </span>
           )}
         </div>
+
+        <p className="qr-mode-note">
+          {qrMode === 'figuritas'
+            ? 'Escanéalo desde Intercambiar figuritas en la App Figuritas.'
+            : 'Este QR abre el match actualizado entre cuentas de Figuras Colección.'}
+        </p>
+
+        {figuritasQrError && (
+          <div className="qr-mode-error" role="alert">{figuritasQrError}</div>
+        )}
         <div className="qr-user-name">{myName}</div>
 
         <div className="qr-scan-actions">
