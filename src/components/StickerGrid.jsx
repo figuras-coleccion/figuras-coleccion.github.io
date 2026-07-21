@@ -273,7 +273,7 @@ function StickerToken({ sticker, onUpdate, onRemove, editingLocked }) {
       <div className="sticker-token-wrap">
         <button
           type="button"
-          className={`sticker-token ${pressing ? 'pressing' : ''}`}
+          className="sticker-token"
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
