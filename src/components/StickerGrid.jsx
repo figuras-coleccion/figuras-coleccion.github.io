@@ -4,7 +4,7 @@ import { useEditLock } from '../context/EditLockContext'
 import { useStickers } from '../context/StickersContext'
 
 const LONG_PRESS_MS = 1000
-const POST_REDUCTION_LOCK_MS = 1000
+const POST_REDUCTION_LOCK_MS = 500
 const REDUCTION_ANIMATION_MS = 880
 
 let gridInteractionLockedUntil = 0
@@ -182,7 +182,7 @@ function StickerToken({ sticker, onUpdate, onRemove, editingLocked }) {
       return
     }
 
-    lockGridInteraction(700)
+    lockGridInteraction(POST_REDUCTION_LOCK_MS)
     Promise.resolve(onRemove(code))
       .then(() => {
         showFeedback('−')
